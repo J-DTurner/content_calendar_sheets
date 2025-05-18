@@ -2109,3 +2109,20 @@ function userInitiatedFullSetup() {
     ui.alert("Setup Incomplete", finalMessage, ui.ButtonSet.OK);
   }
 }
+
+/**
+ * Opens the Search & Filter modal dialog
+ * This function serves the SearchFilterModal.html file to the client
+ */
+function openSearchFilterModal() {
+  try {
+    const htmlOutput = HtmlService.createHtmlOutputFromFile('SearchFilterModal.html')
+                         .setWidth(700)  // Recommended starting width
+                         .setHeight(600) // Recommended starting height
+                         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Search & Filter Content');
+  } catch (e) {
+    Logger.log('Error in openSearchFilterModal: ' + e.toString());
+    SpreadsheetApp.getUi().alert('Error: Could not open the Search & Filter dialog. Details: ' + e.message);
+  }
+}

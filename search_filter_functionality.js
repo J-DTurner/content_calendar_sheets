@@ -121,8 +121,13 @@ function setupSearchSheet() {
  */
 function searchContentCalendar(e) {
   // Exit if this isn't the Search button click
-  if (!e) return;
-  if (e.range.getA1Notation() !== 'D2' || e.source.getActiveSheet().getName() !== SEARCH_CONFIG.SEARCH_SHEET) return;
+  if (!e) {
+    return;
+  }
+  
+  if (e.range.getA1Notation() !== 'D2' || e.source.getActiveSheet().getName() !== SEARCH_CONFIG.SEARCH_SHEET) {
+    return;
+  }
   
   // Get the spreadsheet
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -291,7 +296,9 @@ function clearSearchResults(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const searchSheet = ss.getSheetByName(SEARCH_CONFIG.SEARCH_SHEET);
   
-  if (!searchSheet) return;
+  if (!searchSheet) {
+    return;
+  }
   
   // Clear results area
   searchSheet.getRange(SEARCH_CONFIG.SEARCH_RESULTS_RANGE).clearContent();
@@ -312,21 +319,29 @@ function clearSearchResults(e) {
  */
 function navigateToContentRow(e) {
   // Exit if not in the search sheet
-  if (!e || e.source.getActiveSheet().getName() !== SEARCH_CONFIG.SEARCH_SHEET) return;
+  if (!e || e.source.getActiveSheet().getName() !== SEARCH_CONFIG.SEARCH_SHEET) {
+    return;
+  }
   
   // Check if clicked cell is in the Actions column
-  if (e.range.getColumn() !== 7 || e.range.getRow() < 5) return;
+  if (e.range.getColumn() !== 7 || e.range.getRow() < 5) {
+    return;
+  }
   
   // Get the cell value
   const cellValue = e.range.getValue();
   
   // Check if it's a "Go to Row" cell
-  if (!cellValue || !cellValue.toString().startsWith('Go to Row ')) return;
+  if (!cellValue || !cellValue.toString().startsWith('Go to Row ')) {
+    return;
+  }
   
   // Extract row number
   const rowNumber = parseInt(cellValue.toString().replace('Go to Row ', ''));
   
-  if (isNaN(rowNumber)) return;
+  if (isNaN(rowNumber)) {
+    return;
+  }
   
   // Get the spreadsheet
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -519,4 +534,273 @@ function createSearchMenu() {
     .addItem('Set Up Search Interface', 'setupSearchSheet')
     .addItem('Create Custom Filter', 'createCustomFilter')
     .addToUi();
+}
+
+/**
+ * Performs search based on filters from the UI
+ * @param {Object} filters - Filter object from frontend
+ * @returns {Object} Results object with matching rows, total count, and limit info
+ */
+function performSearch(filters) {
+  const RESULT_LIMIT = 50;
+  
+  try {
+    // Validate input
+    if (!filters || typeof filters !== 'object') {
+      Logger.log('Error: Invalid filters object provided');
+      return { error: 'Invalid filters object', results: [], totalMatches: 0 };
+    }
+    
+    // Access the Content Calendar sheet
+    let ss;
+    try {
+      ss = SpreadsheetApp.getActiveSpreadsheet();
+    } catch (e) {
+      Logger.log('Error accessing spreadsheet: ' + e.toString());
+      return { error: 'Unable to access spreadsheet', results: [], totalMatches: 0 };
+    }
+    
+    let sheet;
+    try {
+      sheet = ss.getSheetByName('Content Calendar');
+    } catch (e) {
+      Logger.log('Error accessing Content Calendar sheet: ' + e.toString());
+      return { error: 'Unable to access Content Calendar sheet', results: [], totalMatches: 0 };
+    }
+    
+    if (!sheet) {
+      Logger.log('Error: Content Calendar sheet not found');
+      return { error: 'Content Calendar sheet not found', results: [], totalMatches: 0 };
+    }
+    
+    // Get all data rows (starting from row 3, skipping headers)
+    let lastRow, lastColumn;
+    try {
+      lastRow = sheet.getLastRow();
+      lastColumn = sheet.getLastColumn();
+    } catch (e) {
+      Logger.log('Error getting sheet dimensions: ' + e.toString());
+      return { error: 'Unable to read sheet dimensions', results: [], totalMatches: 0 };
+    }
+    
+    if (lastRow < 3) {
+      // No data rows
+      return { results: [], totalMatches: 0, limitApplied: RESULT_LIMIT };
+    }
+    
+    let allData;
+    try {
+      allData = sheet.getRange(3, 1, lastRow - 2, lastColumn).getValues();
+    } catch (e) {
+      Logger.log('Error fetching sheet data: ' + e.toString());
+      return { error: 'Unable to fetch sheet data', results: [], totalMatches: 0 };
+    }
+    
+    const matchingRows = [];
+    
+    // Iterate through each row and apply filters
+    for (let i = 0; i < allData.length; i++) {
+      try {
+        const row = allData[i];
+        let isMatch = true;
+        
+        // Check keyword filter (case-insensitive)
+        if (filters.keyword && filters.keyword.trim() !== '') {
+          const keyword = filters.keyword.toLowerCase();
+          const id = (row[0] || '').toString().toLowerCase(); // Column A (ID)
+          const content = (row[5] || '').toString().toLowerCase(); // Column F (Content/Idea)
+          const notes = (row[10] || '').toString().toLowerCase(); // Column K (Notes)
+          
+          if (!id.includes(keyword) && !content.includes(keyword) && !notes.includes(keyword)) {
+            isMatch = false;
+          }
+        }
+      
+      // Check status filter
+      if (filters.status && filters.status !== 'All' && row[3] !== filters.status) {
+        isMatch = false;
+      }
+      
+      // Check channel filter
+      if (filters.channel && filters.channel !== 'All' && row[4] !== filters.channel) {
+        isMatch = false;
+      }
+      
+      // Check pillar filter
+      if (filters.pillar && filters.pillar !== 'All' && row[7] !== filters.pillar) {
+        isMatch = false;
+      }
+      
+      // Check format filter
+      if (filters.format && filters.format !== 'All' && row[8] !== filters.format) {
+        isMatch = false;
+      }
+      
+      // Check assignee filter
+      if (filters.assignee && filters.assignee !== 'All' && row[9] !== filters.assignee) {
+        isMatch = false;
+      }
+      
+      // Check week number filter
+      if (filters.weekNumber && filters.weekNumber !== null && filters.weekNumber !== '') {
+        const weekNum = parseInt(filters.weekNumber);
+        if (!isNaN(weekNum) && row[2] !== weekNum) {
+          isMatch = false;
+        }
+      }
+      
+      // Check date range filter
+      if (filters.dateRange && filters.dateRange.type !== 'All Time' && row[1]) {
+        const rowDate = new Date(row[1]);
+        const timezone = Session.getScriptTimeZone();
+        let actualStartDate = null;
+        let actualEndDate = null;
+        
+        const today = new Date();
+        
+        switch (filters.dateRange.type) {
+          case 'This Week':
+            // Get start and end of current week (Monday to Sunday)
+            const currentDay = today.getDay();
+            const daysToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+            actualStartDate = new Date(today);
+            actualStartDate.setDate(today.getDate() + daysToMonday);
+            actualStartDate.setHours(0, 0, 0, 0);
+            
+            actualEndDate = new Date(actualStartDate);
+            actualEndDate.setDate(actualStartDate.getDate() + 6);
+            actualEndDate.setHours(23, 59, 59, 999);
+            break;
+            
+          case 'Last 7 Days':
+            actualEndDate = new Date(today);
+            actualEndDate.setHours(23, 59, 59, 999);
+            
+            actualStartDate = new Date(today);
+            actualStartDate.setDate(today.getDate() - 6);
+            actualStartDate.setHours(0, 0, 0, 0);
+            break;
+            
+          case 'Next 7 Days':
+            actualStartDate = new Date(today);
+            actualStartDate.setHours(0, 0, 0, 0);
+            
+            actualEndDate = new Date(today);
+            actualEndDate.setDate(today.getDate() + 6);
+            actualEndDate.setHours(23, 59, 59, 999);
+            break;
+            
+          case 'This Month':
+            actualStartDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            actualStartDate.setHours(0, 0, 0, 0);
+            
+            actualEndDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            actualEndDate.setHours(23, 59, 59, 999);
+            break;
+            
+          case 'Last Month':
+            actualStartDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            actualStartDate.setHours(0, 0, 0, 0);
+            
+            actualEndDate = new Date(today.getFullYear(), today.getMonth(), 0);
+            actualEndDate.setHours(23, 59, 59, 999);
+            break;
+            
+          case 'custom':
+            if (filters.dateRange.startDate && filters.dateRange.endDate) {
+              actualStartDate = new Date(filters.dateRange.startDate);
+              actualStartDate.setHours(0, 0, 0, 0);
+              
+              actualEndDate = new Date(filters.dateRange.endDate);
+              actualEndDate.setHours(23, 59, 59, 999);
+            }
+            break;
+        }
+        
+        // Perform date comparison if we have valid dates
+        if (actualStartDate && actualEndDate) {
+          const rowDateOnly = new Date(rowDate);
+          rowDateOnly.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
+          
+          if (rowDateOnly < actualStartDate || rowDateOnly > actualEndDate) {
+            isMatch = false;
+          }
+        }
+      }
+      
+        // If all filters match, add to results
+        if (isMatch) {
+          matchingRows.push({
+            id: row[0] || '',                    // Column A
+            date: row[1] ? new Date(row[1]).toISOString() : '', // Column B
+            week: row[2] || '',                  // Column C
+            status: row[3] || '',                // Column D
+            channel: row[4] || '',               // Column E
+            contentIdea: row[5] || '',           // Column F
+            assignedTo: row[9] || '',            // Column J
+            originalRowIndex: i + 3              // 1-based row number in sheet
+          });
+        }
+      } catch (rowError) {
+        Logger.log('Error processing row ' + (i + 3) + ': ' + rowError.toString());
+        // Continue processing other rows
+      }
+    }
+    
+    // Get total matches before limiting
+    const totalMatches = matchingRows.length;
+    
+    // Limit results to maximum of 50
+    const limitedResults = matchingRows.slice(0, RESULT_LIMIT);
+    
+    return {
+      results: limitedResults,
+      totalMatches: totalMatches,
+      limitApplied: RESULT_LIMIT
+    };
+    
+  } catch (error) {
+    Logger.log('Error in performSearch: ' + error.toString());
+    Logger.log('Stack trace: ' + error.stack);
+    return { 
+      error: 'An unexpected error occurred during search: ' + error.toString(),
+      results: [], 
+      totalMatches: 0,
+      limitApplied: RESULT_LIMIT
+    };
+  }
+}
+
+/**
+ * Navigates to a specific row in the Content Calendar sheet
+ * @param {number} rowIndex - The 1-based row number to navigate to
+ */
+function navigateToRowInContentCalendar(rowIndex) {
+  try {
+    // Get the active spreadsheet
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // Get the sheet named 'Content Calendar'
+    const contentSheet = ss.getSheetByName('Content Calendar');
+    
+    if (!contentSheet) {
+      Logger.log('Error: Content Calendar sheet not found');
+      return { success: false, error: 'Content Calendar sheet not found' };
+    }
+    
+    // Activate this sheet
+    contentSheet.activate();
+    
+    // Get the range corresponding to the first cell of the given rowIndex
+    const range = contentSheet.getRange(rowIndex, 1);
+    
+    // Activate this range - this will select the cell and bring it into view
+    range.activate();
+    
+    return { success: true };
+    
+  } catch (error) {
+    Logger.log('Error in navigateToRowInContentCalendar: ' + error.toString());
+    return { success: false, error: error.toString() };
+  }
 }

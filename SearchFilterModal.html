@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+  <style>
+    body { 
+      font-family: 'Google Sans', Arial, sans-serif; 
+      margin: 0; 
+      padding: 16px 20px; 
+      background-color: #ffffff;
+      color: #202124;
+    }
+    
+    .container { 
+      max-width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    h2 { 
+      color: #202124; 
+      border-bottom: 1px solid #dadce0; 
+      padding-bottom: 12px; 
+      margin: 0 0 20px 0;
+      font-size: 20px;
+      font-weight: 500;
+      letter-spacing: 0.25px;
+    }
+    
+    .filter-section { 
+      margin-bottom: 24px; 
+      flex-shrink: 0;
+    }
+    
+    .filter-row {
+      display: flex;
+      margin-bottom: 16px;
+      gap: 16px;
+    }
+    
+    .filter-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .filter-group label {
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #5f6368;
+      font-size: 14px;
+      letter-spacing: 0.15px;
+    }
+    
+    input[type="text"], 
+    input[type="date"],
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background-color: #fff;
+    }
+    
+    input[type="text"]:hover,
+    input[type="date"]:hover,
+    select:hover {
+      border-color: #9aa0a6;
+    }
+    
+    input[type="text"]:focus,
+    input[type="date"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+    }
+    
+    .keyword-search {
+      margin-bottom: 24px;
+    }
+    
+    .keyword-search input {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 16px;
+      border: 2px solid #dadce0;
+    }
+    
+    .keyword-search input:focus {
+      border-width: 2px;
+      border-color: #1a73e8;
+    }
+    
+    .action-buttons {
+      margin-top: 24px;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-start;
+    }
+    
+    .results-section {
+      margin-top: 28px;
+      border-top: 1px solid #dadce0;
+      padding-top: 20px;
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .results-section h3 {
+      color: #202124;
+      font-size: 16px;
+      font-weight: 500;
+      margin: 0 0 16px 0;
+    }
+    
+    #searchResultsArea {
+      flex: 1;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      padding: 16px;
+      background-color: #f8f9fa;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+    
+    #searchResultsArea:empty::after {
+      content: 'Search results will appear here';
+      color: #9aa0a6;
+      font-style: italic;
+    }
+    
+    button { 
+      padding: 10px 24px; 
+      border: none; 
+      border-radius: 4px; 
+      cursor: pointer; 
+      font-weight: 500;
+      font-size: 14px;
+      font-family: inherit;
+      letter-spacing: 0.25px;
+      transition: background-color 0.2s, box-shadow 0.2s;
+      text-transform: none;
+    }
+    
+    button:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
+    }
+    
+    button.primary { 
+      background-color: #1a73e8; 
+      color: white; 
+    }
+    
+    button.primary:hover { 
+      background-color: #1765cc; 
+      box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+    }
+    
+    button.primary:active {
+      background-color: #1557b7;
+    }
+    
+    button.secondary { 
+      background-color: #ffffff;
+      color: #1a73e8;
+      border: 1px solid #dadce0;
+    }
+    
+    button.secondary:hover { 
+      background-color: #f7f8f9;
+      border-color: #c8cbcf;
+    }
+    
+    button.secondary:active {
+      background-color: #e8e9eb;
+    }
+    
+    .button-group {
+      margin-top: 24px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      border-top: 1px solid #dadce0;
+      padding-top: 16px;
+    }
+    
+    /* Scrollbar styling for results area */
+    #searchResultsArea::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    #searchResultsArea::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    #searchResultsArea::-webkit-scrollbar-thumb {
+      background-color: #dadce0;
+      border-radius: 4px;
+    }
+    
+    #searchResultsArea::-webkit-scrollbar-thumb:hover {
+      background-color: #bdc1c6;
+    }
+    
+    /* Hidden elements should stay hidden */
+    #customDateRow {
+      display: none;
+    }
+    
+    /* Loading states */
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    /* Focus visible for accessibility */
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 2px solid #1a73e8;
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Search & Filter Content</h2>
+    
+    <div class="filter-section">
+      <!-- Keyword Search -->
+      <div class="keyword-search">
+        <label for="keywordSearch">Keyword Search</label>
+        <input type="text" id="keywordSearch" placeholder="Search by ID, content, or notes...">
+      </div>
+      
+      <!-- Filter Groups -->
+      <div class="filter-row">
+        <div class="filter-group">
+          <label for="statusFilter">Status</label>
+          <select id="statusFilter">
+            <option>Loading...</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="channelFilter">Channel</label>
+          <select id="channelFilter">
+            <option>Loading...</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="filter-row">
+        <div class="filter-group">
+          <label for="pillarFilter">Content Pillar</label>
+          <select id="pillarFilter">
+            <option>Loading...</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="formatFilter">Content Format</label>
+          <select id="formatFilter">
+            <option>Loading...</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="filter-row">
+        <div class="filter-group">
+          <label for="weekNumber">Week Number</label>
+          <input type="text" id="weekNumber" placeholder="e.g., 42">
+        </div>
+        <div class="filter-group">
+          <label for="dateRangePresetFilter">Date Range</label>
+          <select id="dateRangePresetFilter">
+            <option value="All Time">All Time</option>
+            <option value="This Week">This Week</option>
+            <option value="Last 7 Days">Last 7 Days</option>
+            <option value="Next 7 Days">Next 7 Days</option>
+            <option value="This Month">This Month</option>
+            <option value="Last Month">Last Month</option>
+            <option value="Custom Range">Custom Range</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Custom date range inputs (initially hidden) -->
+      <div class="filter-row" id="customDateRow" style="display: none;">
+        <div class="filter-group">
+          <label for="customStartDate">Start Date</label>
+          <input type="date" id="customStartDate">
+        </div>
+        <div class="filter-group">
+          <label for="customEndDate">End Date</label>
+          <input type="date" id="customEndDate">
+        </div>
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <button id="applySearchBtn" class="primary">Apply Filters</button>
+        <button id="clearFiltersBtn" class="secondary">Clear All</button>
+      </div>
+    </div>
+    
+    <div class="results-section">
+      <h3>Search Results</h3>
+      <div id="searchResultsArea">
+        <!-- Search results will appear here -->
+      </div>
+    </div>
+    
+    <div class="button-group">
+      <button class="secondary" id="closeButton">Close</button>
+    </div>
+  </div>
+
+  <script>
+    // Set up close button
+    document.getElementById('closeButton').addEventListener('click', function() {
+      google.script.host.close();
+    });
+    
+    // Function to populate dropdown filters with data from backend
+    function populateDropdowns(optionsData) {
+      // Map the API keys to the corresponding select element IDs
+      const mappings = {
+        statuses: 'statusFilter',
+        channels: 'channelFilter',
+        pillars: 'pillarFilter',
+        formats: 'formatFilter'
+      };
+      
+      // Iterate through each key in optionsData
+      for (const key in optionsData) {
+        if (mappings[key]) {
+          const selectElement = document.getElementById(mappings[key]);
+          if (selectElement) {
+            // Clear existing options
+            selectElement.innerHTML = '';
+            
+            // Create field name for default option (capitalize and pluralize)
+            const fieldName = key.charAt(0).toUpperCase() + key.slice(1);
+            
+            // Add default "All" option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = 'All';
+            defaultOption.textContent = `All ${fieldName}`;
+            selectElement.appendChild(defaultOption);
+            
+            // Add options from the data array
+            const options = optionsData[key];
+            if (Array.isArray(options)) {
+              if (options.length === 0) {
+                // Add a disabled option indicating no items are defined
+                const noItemsOption = document.createElement('option');
+                noItemsOption.value = '';
+                noItemsOption.textContent = `No ${fieldName.toLowerCase()} defined`;
+                noItemsOption.disabled = true;
+                selectElement.appendChild(noItemsOption);
+              } else {
+                // Add each option from the array
+                options.forEach(item => {
+                  const option = document.createElement('option');
+                  option.value = item;
+                  option.textContent = item;
+                  selectElement.appendChild(option);
+                });
+              }
+            }
+          }
+        }
+      }
+      
+      // Note: assignees field is not mapped to any select element in current HTML
+      // If needed in future, add an assigneeFilter select element
+    }
+    
+    // Function to handle search
+    function handleSearch() {
+      // Gather all filter values
+      const filters = {
+        keyword: document.getElementById('keywordSearch').value || "",
+        status: document.getElementById('statusFilter').value || "All",
+        channel: document.getElementById('channelFilter').value || "All",
+        pillar: document.getElementById('pillarFilter').value || "All",
+        format: document.getElementById('formatFilter').value || "All",
+        assignee: "All", // No assignee filter in current UI, defaulting to "All"
+        weekNumber: document.getElementById('weekNumber').value || null,
+        dateRange: {
+          type: document.getElementById('dateRangePresetFilter').value
+        }
+      };
+      
+      // If custom date range, add start and end dates
+      if (filters.dateRange.type === 'Custom Range') {
+        filters.dateRange.type = 'custom';
+        filters.dateRange.startDate = document.getElementById('customStartDate').value || null;
+        filters.dateRange.endDate = document.getElementById('customEndDate').value || null;
+      } else {
+        filters.dateRange.startDate = null;
+        filters.dateRange.endDate = null;
+      }
+      
+      // Show loading state
+      const searchButton = document.getElementById('applySearchBtn');
+      const originalButtonText = searchButton.textContent;
+      searchButton.textContent = 'Searching...';
+      searchButton.disabled = true;
+      
+      // Clear previous results
+      document.getElementById('searchResultsArea').innerHTML = '<p>Searching...</p>';
+      
+      // Execute backend call
+      google.script.run
+        .withSuccessHandler(function(results) {
+          displayResults(results);
+          searchButton.textContent = originalButtonText;
+          searchButton.disabled = false;
+        })
+        .withFailureHandler(function(error) {
+          handleSearchError(error);
+          searchButton.textContent = originalButtonText;
+          searchButton.disabled = false;
+        })
+        .performSearch(filters);
+    }
+    
+    // Function to display search results
+    function displayResults(resultsData) {
+      // Get the results area element
+      const resultsArea = document.getElementById('searchResultsArea');
+      
+      // Clear previous content
+      resultsArea.innerHTML = '';
+      
+      // Re-enable the search button (already done in handleSearch callback)
+      
+      // Determine the results array structure (could be wrapped or direct array)
+      const results = resultsData.results || resultsData;
+      const totalMatches = resultsData.totalMatches || (Array.isArray(resultsData) ? resultsData.length : 0);
+      
+      // Check if results are empty
+      if (!results || results.length === 0) {
+        resultsArea.innerHTML = '<p>No content items match your criteria.</p>';
+        return;
+      }
+      
+      // Create results table
+      const table = document.createElement('table');
+      table.style.width = '100%';
+      table.style.borderCollapse = 'collapse';
+      table.style.fontSize = '14px';
+      table.style.fontFamily = 'Arial, sans-serif';
+      
+      // Create table header
+      const headerRow = document.createElement('tr');
+      const headers = ['ID', 'Date', 'Week', 'Status', 'Channel', 'Content/Idea', 'Assigned To', 'Action'];
+      headers.forEach(headerText => {
+        const th = document.createElement('th');
+        th.textContent = headerText;
+        th.style.padding = '10px 8px';
+        th.style.borderBottom = '2px solid #4285F4';
+        th.style.textAlign = 'left';
+        th.style.fontWeight = 'bold';
+        th.style.backgroundColor = '#f8f9fa';
+        th.style.color = '#202124';
+        headerRow.appendChild(th);
+      });
+      table.appendChild(headerRow);
+      
+      // Add result rows
+      results.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid #e0e0e0';
+        // Alternate row background colors for better readability
+        if (index % 2 === 0) {
+          row.style.backgroundColor = '#fafafa';
+        }
+        // Hover effect
+        row.onmouseover = function() {
+          this.style.backgroundColor = '#e8f0fe';
+        };
+        row.onmouseout = function() {
+          this.style.backgroundColor = index % 2 === 0 ? '#fafafa' : 'transparent';
+        };
+        
+        // Format date properly to YYYY-MM-DD
+        let formattedDate = '';
+        if (item.date) {
+          try {
+            const dateObj = new Date(item.date);
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            formattedDate = `${year}-${month}-${day}`;
+          } catch (e) {
+            formattedDate = item.date;
+          }
+        }
+        
+        // Add cells for each property
+        const cells = [
+          item.id || '',
+          formattedDate,
+          item.week || '',
+          item.status || '',
+          item.channel || '',
+          item.contentIdea || '',
+          item.assignedTo || ''
+        ];
+        
+        cells.forEach((cellText, cellIndex) => {
+          const td = document.createElement('td');
+          td.textContent = cellText;
+          td.style.padding = '10px 8px';
+          td.style.verticalAlign = 'top';
+          td.style.color = '#202124';
+          
+          // Truncate long content ideas to 50 characters
+          if (cellText === item.contentIdea && cellText.length > 50) {
+            td.textContent = cellText.substring(0, 47) + '...';
+            td.title = cellText; // Full text on hover
+            td.style.cursor = 'help';
+          }
+          
+          // Special formatting for specific columns
+          if (cellIndex === 1) { // Date column
+            td.style.whiteSpace = 'nowrap';
+          } else if (cellIndex === 2) { // Week column
+            td.style.textAlign = 'center';
+          } else if (cellIndex === 3) { // Status column
+            td.style.fontWeight = '500';
+          }
+          
+          row.appendChild(td);
+        });
+        
+        // Add 'Go to Item' button
+        const actionCell = document.createElement('td');
+        actionCell.style.padding = '10px 8px';
+        actionCell.style.textAlign = 'center';
+        
+        const goToButton = document.createElement('button');
+        goToButton.textContent = 'Go to Item';
+        goToButton.className = 'goToItemBtn';
+        goToButton.style.padding = '6px 12px';
+        goToButton.style.fontSize = '12px';
+        goToButton.style.backgroundColor = '#4285F4';
+        goToButton.style.color = 'white';
+        goToButton.style.border = 'none';
+        goToButton.style.borderRadius = '4px';
+        goToButton.style.cursor = 'pointer';
+        goToButton.style.transition = 'background-color 0.2s';
+        goToButton.dataset.rowIndex = item.originalRowIndex;
+        
+        goToButton.onmouseover = function() {
+          this.style.backgroundColor = '#2c68c9';
+        };
+        goToButton.onmouseout = function() {
+          this.style.backgroundColor = '#4285F4';
+        };
+        
+        actionCell.appendChild(goToButton);
+        row.appendChild(actionCell);
+        table.appendChild(row);
+      });
+      
+      // Add table to results area
+      resultsArea.appendChild(table);
+      
+      // Show truncation message if applicable
+      if (totalMatches > results.length) {
+        const truncationMessage = document.createElement('p');
+        truncationMessage.textContent = `Showing ${results.length} of ${totalMatches} results.`;
+        truncationMessage.style.marginTop = '10px';
+        truncationMessage.style.fontStyle = 'italic';
+        truncationMessage.style.color = '#666';
+        resultsArea.appendChild(truncationMessage);
+      }
+    }
+    
+    // Function to handle search errors
+    function handleSearchError(error) {
+      // Log detailed error to console
+      console.error('Search failed:', error);
+      
+      // Re-enable the search button (already done in handleSearch callback)
+      
+      // Display user-friendly error message
+      const resultsArea = document.getElementById('searchResultsArea');
+      const errorMessage = error.message || error;
+      
+      const errorDiv = document.createElement('div');
+      errorDiv.style.padding = '15px';
+      errorDiv.style.backgroundColor = '#f8d7da';
+      errorDiv.style.border = '1px solid #f5c6cb';
+      errorDiv.style.borderRadius = '4px';
+      errorDiv.style.color = '#721c24';
+      errorDiv.style.marginTop = '10px';
+      
+      const errorText = document.createElement('p');
+      errorText.textContent = 'An error occurred while searching: ' + errorMessage;
+      errorText.style.margin = '0';
+      
+      errorDiv.appendChild(errorText);
+      
+      // Clear previous content and show error
+      resultsArea.innerHTML = '';
+      resultsArea.appendChild(errorDiv);
+    }
+    
+    // Function to handle clearing all filters
+    function handleClearFilters() {
+      // Reset text inputs
+      document.getElementById('keywordSearch').value = '';
+      document.getElementById('weekNumber').value = '';
+      
+      // Reset select dropdowns to first option
+      document.getElementById('statusFilter').selectedIndex = 0;
+      document.getElementById('channelFilter').selectedIndex = 0;
+      document.getElementById('pillarFilter').selectedIndex = 0;
+      document.getElementById('formatFilter').selectedIndex = 0;
+      document.getElementById('dateRangePresetFilter').selectedIndex = 0;
+      
+      // Reset and hide custom date inputs
+      document.getElementById('customStartDate').value = '';
+      document.getElementById('customEndDate').value = '';
+      document.getElementById('customDateRow').style.display = 'none';
+      
+      // Clear search results area
+      document.getElementById('searchResultsArea').innerHTML = '';
+      
+      // Set focus back to keyword input field
+      document.getElementById('keywordSearch').focus();
+    }
+    
+    // On page load, fetch dropdown options
+    window.onload = function() {
+      google.script.run.withSuccessHandler(populateDropdowns).getFilterDropdownOptions();
+      
+      // Set up date range dropdown change handler
+      const dateRangePreset = document.getElementById('dateRangePresetFilter');
+      const customDateRow = document.getElementById('customDateRow');
+      
+      dateRangePreset.addEventListener('change', function() {
+        if (this.value === 'Custom Range') {
+          customDateRow.style.display = 'flex';
+        } else {
+          customDateRow.style.display = 'none';
+        }
+      });
+      
+      // Set up search button click handler
+      document.getElementById('applySearchBtn').addEventListener('click', handleSearch);
+      
+      // Set up clear filters button click handler
+      document.getElementById('clearFiltersBtn').addEventListener('click', handleClearFilters);
+      
+      // Set up event delegation for 'Go to Item' buttons
+      document.getElementById('searchResultsArea').addEventListener('click', function(event) {
+        if (event.target.classList.contains('goToItemBtn')) {
+          // Retrieve the row index from the dataset
+          const rowIndex = event.target.dataset.rowIndex;
+          
+          // Convert to number and call backend navigation function
+          const rowNumber = parseInt(rowIndex);
+          
+          // Navigate to the row and close the modal on success
+          google.script.run
+            .withSuccessHandler(function() {
+              google.script.host.close();
+            })
+            .navigateToRowInContentCalendar(rowNumber);
+        }
+      });
+    };
+  </script>
+</body>
+</html>

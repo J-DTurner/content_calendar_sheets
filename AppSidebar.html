@@ -169,6 +169,8 @@
               console.error("Error opening Integrations Menu: ", err);
             })
             .openIntegrationsDialog();
+        } else if (menuName === 'Search') {
+          google.script.run.openSearchFilterModal();
         } else {
           showStatus('Opening "' + menuName + '" specific functions would typically be in a dedicated modal or separate sidebar section.', true);
           console.log("User clicked to open menu: " + menuName + ". Actual menu display logic needs server-side or client-side modal/UI change.");

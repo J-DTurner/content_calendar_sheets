@@ -35,76 +35,21 @@ Begin by stating your understanding of the original task and your plan for QA an
 
 Original Task Description:
 ---
-File: `InitialAuthPrompt.html` (New File)
-
-**Action:** Create a new HTML file that will serve as the modal dialog prompting the user for authorization.
-
-**Content:**
-```html
-<!DOCTYPE html>
-<html>
-  <head>
-    <base target="_top">
-    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
-    <style>
-      body { padding: 20px; font-family: Arial, sans-serif; text-align: center; }
-      h3 { margin-top: 0; }
-      p { margin-bottom: 20px; text-align: left; line-height: 1.6;}
-      .button-bar { margin-top: 20px; }
-      #loader { display: none; margin: 15px auto; border: 4px solid #f3f3f3; border-top: 4px solid #4285F4; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
-      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
-  </head>
-  <body>
-    <h3>Content Calendar Setup</h3>
-    <p>Welcome! To ensure all features of the Content Calendar work correctly, the script needs your permission to access certain Google services (like Drive, Calendar, and sending notifications).</p>
-    <p>Please click the button below to proceed with authorization. You'll be guided through Google's standard permission process. This is typically a one-time step.</p>
-    
-    <div id="loader"></div>
-    <div id="status-message" style="color: red; margin-top:10px;"></div>
-
-    <div class="button-bar">
-      <button class="action" id="authorizeButton" onclick="requestAuthorization()">Authorize & Continue Setup</button>
-      <button onclick="google.script.host.close()">Not Now (Limited Functionality)</button>
-    </div>
-
-    <script>
-      function requestAuthorization() {
-        document.getElementById('authorizeButton').disabled = true;
-        document.getElementById('loader').style.display = 'block';
-        document.getElementById('status-message').textContent = '';
-
-        google.script.run
-          .withSuccessHandler(function(result) {
-            document.getElementById('loader').style.display = 'none';
-            if (result && result.success) {
-              // Authorization and setup was successful from the backend
-              google.script.host.close(); // Close this modal
-              // The backend might have shown its own toasts for setup progress
-            } else {
-              // Backend reported an issue even after attempting auth, or setup failed
-              document.getElementById('authorizeButton').disabled = false;
-              let message = "Setup was not fully completed. ";
-              if (result && result.message) {
-                message += result.message;
-              } else if (result && result.error) {
-                message += result.error;
-              } else {
-                message += "Please try again or contact support if issues persist. You might need to close and reopen the sheet.";
-              }
-              document.getElementById('status-message').textContent = message;
-              // Optionally, do not close the modal and let user try again or close manually
-            }
-          })
-          .withFailureHandler(function(error) {
-            document.getElementById('loader').style.display = 'none';
-            document.getElementById('authorizeButton').disabled = false;
-            document.getElementById('status-message').textContent = 'An error occurred: ' + (error.message || error) + '. Please close this dialog, refresh the sheet, and try authorizing via the menu if the issue persists.';
-          })
-          .proceedWithAuthorizationAndSetupFromModal(); // This is the new backend function we'll create
-      }
-    </script>
-  </body>
-</html>
+File: `code_review_search_filter.js`
+Instruction: Locate the code snippet under the comment "Issue 1.2: Potential performance issue with notes column access". This `if` block is currently at the global scope. Comment out the entire `if` block to prevent it from being parsed as executable code.
+Change from:
+```javascript
+// Issue 1.2: Potential performance issue with notes column access
+// RECOMMENDATION: Check if the notes column index (10) exists before accessing
+if (row.length > 10) {
+  const notes = (row[10] || '').toString().toLowerCase();
+}
 ```
-**Reasoning:** This HTML file provides a user-friendly modal that explains why authorization is needed and gives the user a clear action to initiate the process. The `google.script.run` call will trigger the backend function capable of initiating the OAuth flow.
+Change to:
+```javascript
+// Issue 1.2: Potential performance issue with notes column access
+// RECOMMENDATION: Check if the notes column index (10) exists before accessing
+// if (row.length > 10) {
+//   const notes = (row[10] || '').toString().toLowerCase();
+// }
+```
