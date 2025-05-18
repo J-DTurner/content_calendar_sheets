@@ -357,7 +357,7 @@ function initializeOrRefreshAssetColumn() {
     if (assetMap.has(rowIdentifier)) {
       actionCell.setValue("View Asset");
     } else {
-      actionCell.setValue("Assign Asset");
+      actionCell.setValue("Link Asset");
     }
     
     // Flush changes periodically (every 10 rows) to improve performance
@@ -421,9 +421,9 @@ function performActionOnSelectedAssetCell() {
   var rowIdentifier = getRowIdentifier(activeSheet, rowNum);
   
   // Branch logic based on cell value
-  if (cellValue === "Assign Asset") {
-    // Call the function to show assign asset dialog
-    Logger.log('Showing assign asset dialog for row: ' + rowNum + ', identifier: ' + rowIdentifier);
+  if (cellValue === "Link Asset") {
+    // Call the function to show link asset dialog
+    Logger.log('Showing link asset dialog for row: ' + rowNum + ', identifier: ' + rowIdentifier);
     showAssignAssetDialog(rowIdentifier, rowNum);
   } else if (cellValue === "View Asset") {
     // Call the function to view asset for row
@@ -431,7 +431,7 @@ function performActionOnSelectedAssetCell() {
     viewAssetForRow(rowIdentifier);
   } else {
     // No action defined for this cell value
-    SpreadsheetApp.getUi().alert('No action defined for cell value "' + cellValue + '". Expected "Assign Asset" or "View Asset".');
+    SpreadsheetApp.getUi().alert('No action defined for cell value "' + cellValue + '". Expected "Link Asset" or "View Asset".');
   }
 }
 
@@ -456,7 +456,7 @@ function showAssignAssetDialog(rowIdentifier, rowNumForDisplay) {
                      .setSandboxMode(HtmlService.SandboxMode.IFRAME);
   
   // Show as a modal dialog with appropriate title
-  SpreadsheetApp.getUi().showModalDialog(html, 'Assign Asset for Row ' + rowNumForDisplay);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Link Asset for Row ' + rowNumForDisplay);
 }
 
 /**
@@ -978,7 +978,7 @@ function onSelectionChange(e) {
 
   var cellValue = e.range.getValue();
   var rowIdentifier = getRowIdentifier(sheet, row);
-  if (cellValue === "Assign Asset") {
+  if (cellValue === "Link Asset") {
     showAssignAssetDialog(rowIdentifier, row);
   }
 }
