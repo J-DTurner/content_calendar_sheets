@@ -90,7 +90,10 @@ function loadConfig() {
     if (contentSheet) {
       getHeaderIndexes(contentSheet);
     }
-    
+
+    // Ensure Assets sheet exists whenever configuration is loaded
+    ensureAssetsSheetExists();
+
     return true;
   } catch (e) {
     Logger.log('Error loading configuration: ' + e.toString());
@@ -936,5 +939,46 @@ function uploadAndAssociateAsset(fileObject, projectId) {
       success: false,
       error: "Failed to upload and associate asset: " + e.toString()
     };
+  }
+}
+
+/**
+ * Ensures that the Assets sheet exists with proper headers.
+ * @return {Sheet} The Assets sheet instance.
+ */
+function ensureAssetsSheetExists() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var assetsSheet = ss.getSheetByName(ASSETS_SHEET_NAME);
+  if (!assetsSheet) {
+    assetsSheet = ss.insertSheet(ASSETS_SHEET_NAME);
+    assetsSheet.appendRow(["Project ID", "File ID", "File Name", "Upload Date"]);
+  }
+  return assetsSheet;
+}
+
+/**
+ * Triggered when the user changes selection in the spreadsheet.
+ * Opens the asset dialog when selecting a cell in the asset column.
+ *
+ * @param {GoogleAppsScript.Events.SheetsOnSelectionChange} e Event object.
+ */
+function onSelectionChange(e) {
+  var sheet = e.range.getSheet();
+  if (!loadConfig()) return;
+  if (sheet.getName() !== CONTENT_SHEET_NAME) return;
+  try {
+    getHeaderIndexes(sheet);
+  } catch (err) {
+    return;
+  }
+
+  var row = e.range.getRow();
+  if (row < 3) return; // skip headers
+  if (e.range.getColumn() !== ASSET_ACTION_COL_IDX) return;
+
+  var cellValue = e.range.getValue();
+  var rowIdentifier = getRowIdentifier(sheet, row);
+  if (cellValue === "Assign Asset") {
+    showAssignAssetDialog(rowIdentifier, row);
   }
 }
