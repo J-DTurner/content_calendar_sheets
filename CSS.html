@@ -1,0 +1,152 @@
+<!-- CSS Styles for the application -->
+<style>
+  /* General styles */
+  body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    color: #333;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  header {
+    margin-bottom: 20px;
+  }
+  
+  /* Modal styles */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+  }
+  
+  .modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 60%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+  }
+  
+  .modal-header {
+    position: relative;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+  }
+  
+  .close {
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  
+  .close:hover,
+  .close:focus {
+    color: black;
+    text-decoration: none;
+  }
+  
+  .modal-view {
+    padding: 10px 0;
+  }
+  
+  /* Form styles */
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 5px;
+  }
+  
+  .form-actions {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  /* Button styles */
+  .action-button,
+  .back-button,
+  .submit-button {
+    padding: 8px 15px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  
+  .action-button {
+    background-color: #f0f0f0;
+    margin-right: 10px;
+  }
+  
+  .back-button {
+    background-color: #f0f0f0;
+  }
+  
+  .submit-button {
+    background-color: #4CAF50;
+    color: white;
+    border-color: #45a049;
+  }
+  
+  .choice-buttons {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+  }
+  
+  /* Loading and status messages */
+  .loading,
+  .status-message {
+    padding: 10px;
+    text-align: center;
+    font-style: italic;
+    color: #666;
+  }
+  
+  /* File listing styles */
+  .file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .file-item:hover {
+    background-color: #f9f9f9;
+  }
+  
+  .file-name {
+    flex-grow: 1;
+  }
+  
+  .file-select-button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+</style>

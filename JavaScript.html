@@ -1,0 +1,374 @@
+<!-- 
+  JavaScript.html 
+  Contains client-side JavaScript functions for the application
+-->
+
+<script>
+// Global variables to track the current asset selection state
+let currentAssetButton = null;
+let currentAssetProjectId = null;
+
+/**
+ * Initialization function that runs when the page is loaded.
+ * Sets up event listeners and starts the application flow.
+ */
+function initializeApp() {
+  console.log('Initializing application...');
+  
+  // Set up event delegation for asset buttons
+  document.addEventListener('click', function(event) {
+    // Check if the clicked element is an asset button
+    if (event.target.classList.contains('view-asset') || 
+        event.target.classList.contains('select-asset')) {
+      handleAssetButtonClick(event);
+    }
+  });
+  
+  // Set up event listeners for the modal dialog
+  document.addEventListener('DOMContentLoaded', function() {
+    // Close button listener
+    const closeButton = document.querySelector('.close');
+    if (closeButton) {
+      closeButton.addEventListener('click', closeModal);
+    }
+    
+    // Upload New Asset button listener
+    const uploadNewButton = document.getElementById('uploadNewButton');
+    if (uploadNewButton) {
+      uploadNewButton.addEventListener('click', showUploadNewAssetView);
+    }
+    
+    // Choose Existing Asset button listener
+    const chooseExistingButton = document.getElementById('chooseExistingButton');
+    if (chooseExistingButton) {
+      chooseExistingButton.addEventListener('click', showChooseExistingAssetView);
+    }
+    
+    // Back button listeners
+    const backToChoiceFromUpload = document.getElementById('backToChoiceFromUpload');
+    if (backToChoiceFromUpload) {
+      backToChoiceFromUpload.addEventListener('click', showAssetChoiceView);
+    }
+    
+    const backToChoiceFromExisting = document.getElementById('backToChoiceFromExisting');
+    if (backToChoiceFromExisting) {
+      backToChoiceFromExisting.addEventListener('click', showAssetChoiceView);
+    }
+  });
+  
+  // Click outside to close modal
+  window.onclick = function(event) {
+    const modal = document.getElementById('assetModal');
+    if (event.target === modal) {
+      closeModal();
+    }
+  };
+  
+  // Start the authorization flow
+  runAuthFlow();
+}
+
+/**
+ * Handles clicks on the asset-related buttons.
+ * 
+ * @param {Event} event - The click event
+ */
+function handleAssetButtonClick(event) {
+  const button = event.target;
+  const projectId = button.getAttribute('data-project-id');
+  
+  if (button.classList.contains('view-asset')) {
+    const fileId = button.getAttribute('data-file-id');
+    if (fileId) {
+      // Construct the Google Drive file URL
+      const fileUrl = `https://drive.google.com/file/d/${fileId}/view`;
+      // Open the file in a new tab
+      window.open(fileUrl, '_blank');
+    } else {
+      console.error('No file ID found for view-asset button');
+    }
+  } else if (button.classList.contains('select-asset')) {
+    // Open the asset selection modal
+    openSelectAssetModal(projectId, button);
+  }
+}
+
+/**
+ * Opens the modal dialog.
+ */
+function openModal() {
+  const modal = document.getElementById('assetModal');
+  if (modal) {
+    modal.style.display = 'block';
+  }
+}
+
+/**
+ * Closes the modal dialog and resets the state.
+ */
+function closeModal() {
+  const modal = document.getElementById('assetModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+  
+  // Reset state
+  currentAssetButton = null;
+  currentAssetProjectId = null;
+}
+
+/**
+ * Opens the asset selection modal for a specific project.
+ * 
+ * @param {string} projectId - The ID of the project to associate an asset with
+ * @param {HTMLElement} buttonElement - The button element that was clicked
+ */
+function openSelectAssetModal(projectId, buttonElement) {
+  console.log('Opening asset selection modal for project:', projectId);
+  
+  // Set the current state
+  currentAssetButton = buttonElement;
+  currentAssetProjectId = projectId;
+  
+  // Set the project ID in the modal title
+  const modalProjectIdElement = document.getElementById('modalProjectId');
+  if (modalProjectIdElement) {
+    modalProjectIdElement.textContent = projectId;
+  }
+  
+  // Show the modal with the choice view
+  openModal();
+  showAssetChoiceView();
+}
+
+/**
+ * Shows the main asset choice view and hides other views.
+ */
+function showAssetChoiceView() {
+  // Show the choice view, hide others
+  document.getElementById('assetChoiceView').style.display = 'block';
+  document.getElementById('uploadNewAssetView').style.display = 'none';
+  document.getElementById('chooseExistingAssetView').style.display = 'none';
+}
+
+/**
+ * Shows the upload new asset view and hides other views.
+ */
+function showUploadNewAssetView() {
+  // Show the upload view, hide others
+  document.getElementById('assetChoiceView').style.display = 'none';
+  document.getElementById('uploadNewAssetView').style.display = 'block';
+  document.getElementById('chooseExistingAssetView').style.display = 'none';
+  
+  // Reset the upload form and status message
+  const uploadForm = document.getElementById('uploadForm');
+  if (uploadForm) {
+    uploadForm.reset();
+  }
+  
+  const uploadStatus = document.getElementById('uploadStatus');
+  if (uploadStatus) {
+    uploadStatus.textContent = '';
+  }
+}
+
+/**
+ * Shows the choose existing asset view and hides other views.
+ * Also loads the existing assets from the server.
+ */
+function showChooseExistingAssetView() {
+  // Show the existing assets view, hide others
+  document.getElementById('assetChoiceView').style.display = 'none';
+  document.getElementById('uploadNewAssetView').style.display = 'none';
+  document.getElementById('chooseExistingAssetView').style.display = 'block';
+  
+  // Reset the status message
+  const selectionStatus = document.getElementById('selectionStatus');
+  if (selectionStatus) {
+    selectionStatus.textContent = '';
+  }
+  
+  // Set loading state
+  const existingAssetsList = document.getElementById('existingAssetsList');
+  if (existingAssetsList) {
+    existingAssetsList.innerHTML = '<div class="loading">Loading files...</div>';
+  }
+  
+  // Load the existing files from the server
+  loadFilesForChooser();
+}
+
+/**
+ * Loads the list of files from the asset folder on the server.
+ * Populates the existing assets list in the UI.
+ */
+function loadFilesForChooser() {
+  // Show loading indicator
+  const existingAssetsList = document.getElementById('existingAssetsList');
+  if (existingAssetsList) {
+    existingAssetsList.innerHTML = '<div class="loading">Loading files...</div>';
+  }
+  
+  // Call the server function to get the list of files
+  google.script.run
+    .withSuccessHandler(function(data) {
+      // Handle successful response
+      if (existingAssetsList) {
+        // Clear the loading indicator
+        existingAssetsList.innerHTML = '';
+        
+        if (data && data.success && data.files && data.files.length > 0) {
+          // Create a div for each file
+          data.files.forEach(function(file) {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            
+            // Create span for file name
+            const fileName = document.createElement('span');
+            fileName.className = 'file-name';
+            fileName.textContent = file.name;
+            
+            // Create select button
+            const selectButton = document.createElement('button');
+            selectButton.className = 'file-select-button';
+            selectButton.textContent = 'Select';
+            
+            // Add dataset attributes for file ID and name
+            selectButton.dataset.fileId = file.id;
+            selectButton.dataset.fileName = file.name;
+            
+            // Add click handler for select button
+            selectButton.onclick = function() {
+              handleSelectExistingAsset(file.id, file.name);
+            };
+            
+            // Append elements to file item
+            fileItem.appendChild(fileName);
+            fileItem.appendChild(selectButton);
+            
+            // Append file item to list
+            existingAssetsList.appendChild(fileItem);
+          });
+        } else {
+          // No files found
+          existingAssetsList.innerHTML = '<div class="no-files-message">No files found in the asset folder. You can upload a new file instead.</div>';
+        }
+      }
+    })
+    .withFailureHandler(function(error) {
+      // Handle error response
+      if (existingAssetsList) {
+        existingAssetsList.innerHTML = '<div class="error-message">Error loading files: ' + (error || 'Unknown error') + '</div>';
+      }
+      console.error('Error loading asset files:', error);
+    })
+    .listAssetFolderFiles(); // Server function defined in Code.gs
+}
+
+/**
+ * Handles the selection of an existing asset.
+ * Associates the selected file with the current project.
+ * 
+ * @param {string} fileId - The ID of the selected file
+ * @param {string} fileName - The name of the selected file
+ */
+function handleSelectExistingAsset(fileId, fileName) {
+  console.log('Selected existing asset:', fileName, 'with ID:', fileId);
+  
+  // Find the button that was clicked (based on data attributes)
+  const selectButtons = document.querySelectorAll('.file-select-button');
+  let clickedButton = null;
+  
+  for (let i = 0; i < selectButtons.length; i++) {
+    if (selectButtons[i].dataset.fileId === fileId && 
+        selectButtons[i].dataset.fileName === fileName) {
+      clickedButton = selectButtons[i];
+      break;
+    }
+  }
+  
+  if (!clickedButton) {
+    console.error('Could not find the button that was clicked');
+    return;
+  }
+  
+  // Disable the button and change its text
+  clickedButton.disabled = true;
+  clickedButton.textContent = 'Associating...';
+  
+  // Call the server-side function to associate the file
+  google.script.run
+    .withSuccessHandler(function(response) {
+      // Handle successful association
+      if (response && response.success) {
+        // Show a success message
+        alert('Asset associated successfully!');
+        
+        // Update the project button to show the asset is linked
+        updateButtonOnSuccess(response.fileId, response.fileName);
+        
+        // Close the modal
+        closeModal();
+      } else {
+        // Handle server-side failure
+        const errorMsg = (response && response.error) ? response.error : 'Unknown error';
+        alert('Failed to associate asset: ' + errorMsg);
+        
+        // Reset button state
+        clickedButton.disabled = false;
+        clickedButton.textContent = 'Select';
+      }
+    })
+    .withFailureHandler(function(error) {
+      // Handle client-side failure
+      console.error('Error associating asset:', error);
+      alert('Failed to associate asset: ' + (error || 'Unknown error'));
+      
+      // Reset button state
+      clickedButton.disabled = false;
+      clickedButton.textContent = 'Select';
+    })
+    .associateExistingAsset(currentAssetProjectId, fileId, fileName);
+}
+
+/**
+ * Updates the project's asset button after successful association.
+ * 
+ * @param {string} fileId - The ID of the associated file
+ * @param {string} fileName - The name of the associated file
+ */
+function updateButtonOnSuccess(fileId, fileName) {
+  if (currentAssetButton) {
+    // Change the button class from 'select-asset' to 'view-asset'
+    currentAssetButton.classList.remove('select-asset');
+    currentAssetButton.classList.add('view-asset');
+    
+    // Update button text
+    currentAssetButton.textContent = 'View Asset';
+    
+    // Set data attributes for file ID and name
+    currentAssetButton.setAttribute('data-file-id', fileId);
+    currentAssetButton.setAttribute('data-file-name', fileName);
+    
+    // Optionally, update parent row or nearby elements to show file info
+    const parentRow = currentAssetButton.closest('tr');
+    if (parentRow) {
+      const assetNameCell = parentRow.querySelector('.asset-name-cell');
+      if (assetNameCell) {
+        assetNameCell.textContent = fileName;
+      }
+    }
+  }
+}
+
+/**
+ * Run the authorization flow when the page loads.
+ */
+function runAuthFlow() {
+  console.log('Starting authorization flow...');
+  // This will be implemented or is already implemented elsewhere
+}
+
+// Initialize the app when the page loads
+window.onload = initializeApp;
+</script>

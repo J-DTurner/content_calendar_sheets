@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    .container { /* Styles for the container div if any specific layout needs remain, e.g., width constraints if needed */ }
+    h2 { color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-top: 0; }
+    .section { margin-bottom: 25px; }
+    .section h3 { color: #555; margin-bottom: 10px; font-size: 1.1em; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; color: #444; }
+    input[type="text"], input[type="password"] { width: calc(100% - 22px); padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    .button-group {
+      margin-top: 15px;
+      display: flex;
+      justify-content: flex-end; /* Keeps buttons aligned to the right */
+      gap: 10px; /* Adds space between buttons in the group */
+    }
+    button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    button.primary { background-color: #4285F4; color: white; }
+    button.primary:hover { background-color: #357ae8; }
+    button.secondary { background-color: #6c757d; color: white; }
+    button.secondary:hover { background-color: #5a6268; }
+    .status-message { margin-top: 15px; padding: 10px; border-radius: 4px; font-size: 0.9em; text-align: center; display: none; }
+    .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4285F4; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 5px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .instructions { font-size: 0.85em; color: #666; margin-top: 8px; line-height: 1.4; }
+    .form-row { display: flex; align-items: center; margin-bottom: 10px; }
+    .form-row label { flex-basis: 180px; margin-right: 10px; text-align: right; }
+    .form-row input { flex-grow: 1; margin-bottom: 0; }
+    .current-value { font-style: italic; color: #555; margin-left: 5px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Required elements for error handling -->
+    <div id="integrations-loader" style="text-align: center; padding: 20px;">
+      <div class="spinner"></div>
+      <p>Loading settings...</p>
+    </div>
+    <div id="integrations-error" class="status-message error" style="display:none;"></div>
+    <div id="integrations-form-content" style="display:none;">
+      <div id="statusMessage" class="status-message"></div>
+      <div id="loadingIndicator" style="display:none; text-align:center; margin-bottom:15px;"><div class="loader"></div> Processing...</div>
+
+      <div class="section">
+        <h3>API Keys</h3>
+        <div class="form-row">
+          <label for="twitterApiKey">Twitter API Key:</label>
+          <input type="text" id="twitterApiKey" name="twitterApiKey">
+        </div>
+        <div class="form-row">
+          <label for="twitterApiSecret">Twitter API Secret:</label>
+          <input type="password" id="twitterApiSecret" name="twitterApiSecret">
+        </div>
+        <div class="form-row">
+          <label for="youtubeApiKey">YouTube API Key:</label>
+          <input type="text" id="youtubeApiKey" name="youtubeApiKey">
+        </div>
+        <div class="form-row">
+          <label for="telegramBotToken">Telegram Bot Token:</label>
+          <input type="password" id="telegramBotToken" name="telegramBotToken">
+        </div>
+        <div class="button-group">
+          <button id="saveApiKeysBtn" class="primary" onclick="saveApiKeys()">Save API Keys</button>
+        </div>
+        <p class="instructions">
+          For Twitter, create a developer account at developer.twitter.com. <br>
+          For YouTube, create an API key in the Google Cloud Console. <br>
+          For Telegram, create a bot using @BotFather on Telegram.
+        </p>
+      </div>
+
+      <div class="section">
+        <h3>Primary Google Drive Assets Folder</h3>
+        <div class="form-row">
+          <label for="driveFolderId">Folder ID:</label>
+          <input type="text" id="driveFolderId" name="driveFolderId">
+        </div>
+        <p>Current Folder: <span id="currentDriveFolderName" class="current-value">Not Connected</span></p>
+        <div class="button-group">
+          <button id="saveDriveFolderBtn" class="primary" onclick="saveDriveFolderId()">Connect/Update Folder</button>
+          <button id="syncDriveAssetsBtn" class="secondary" onclick="syncDriveAssets()">Sync Drive Assets</button>
+        </div>
+        <p class="instructions">Enter the ID of your primary Google Drive folder for all content assets. This folder will be used for linking assets via the "📎 Drive Tools" menu, by the "Asset Management" system, and for the <code>api_integrations.js</code> asset sync feature. You can find the ID in the folder's URL (e.g., .../folders/THIS_IS_THE_ID).</p>
+      </div>
+
+      <div class="section">
+        <h3>Content Analytics</h3>
+        <p>Last Sync: <span id="lastAnalyticsSync" class="current-value">Never</span></p>
+        <div class="button-group">
+          <button id="fetchAnalyticsBtn" class="primary" onclick="fetchAnalytics()">Fetch Content Analytics</button>
+        </div>
+        <p class="instructions">This will retrieve basic metrics for published content based on your API key configurations.</p>
+      </div>
+      
+      <div class="button-group" style="border-top: 1px solid #eee; padding-top: 15px;">
+          <button onclick="google.script.host.close()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Function to call when the modal loads
+    function loadInitialSettings() {
+      document.getElementById('integrations-loader').style.display = 'block';
+      document.getElementById('integrations-form-content').style.display = 'none';
+      document.getElementById('integrations-error').style.display = 'none';
+      
+      google.script.run
+        .withSuccessHandler(onSettingsLoaded)
+        .withFailureHandler(onSettingsLoadFailure)
+        .getIntegrationSettings();
+    }
+    
+    function onSettingsLoaded(settings) {
+      document.getElementById('integrations-loader').style.display = 'none';
+      if (settings && settings.error) {
+        // Handle error case even if it came through success handler (e.g. backend returned {error: ...})
+        onSettingsLoadFailure(settings); // Pass the whole settings object
+        return;
+      }
+      document.getElementById('integrations-form-content').style.display = 'block';
+      
+      // Original settings handling code
+      const statusDiv = document.getElementById('statusMessage');
+      const loadingIndicator = document.getElementById('loadingIndicator');
+  
+      // Fields
+      const twitterApiKeyEl = document.getElementById('twitterApiKey');
+      const twitterApiSecretEl = document.getElementById('twitterApiSecret');
+      const youtubeApiKeyEl = document.getElementById('youtubeApiKey');
+      const telegramBotTokenEl = document.getElementById('telegramBotToken');
+      const driveFolderIdEl = document.getElementById('driveFolderId');
+      const currentDriveFolderNameEl = document.getElementById('currentDriveFolderName');
+      const lastAnalyticsSyncEl = document.getElementById('lastAnalyticsSync');
+  
+      // Populate form fields with settings data
+      if (twitterApiKeyEl) twitterApiKeyEl.value = settings.twitterApiKey || '';
+      if (twitterApiSecretEl) twitterApiSecretEl.value = settings.twitterApiSecret || '';
+      if (youtubeApiKeyEl) youtubeApiKeyEl.value = settings.youtubeApiKey || '';
+      if (telegramBotTokenEl) telegramBotTokenEl.value = settings.telegramBotToken || '';
+      if (driveFolderIdEl) driveFolderIdEl.value = settings.driveFolderId || '';
+      if (currentDriveFolderNameEl) currentDriveFolderNameEl.textContent = settings.driveFolderName || 'Not Connected';
+      
+      if (lastAnalyticsSyncEl) {
+        if (settings.lastAnalyticsSync === 'Never' || !settings.lastAnalyticsSync) {
+          lastAnalyticsSyncEl.textContent = 'Never';
+        } else {
+          try { // Try to format if it's an ISO string
+            lastAnalyticsSyncEl.textContent = new Date(settings.lastAnalyticsSync).toLocaleString();
+          } catch (e) { // Otherwise, display as is
+            lastAnalyticsSyncEl.textContent = settings.lastAnalyticsSync;
+          }
+        }
+      }
+    }
+    
+    function onSettingsLoadFailure(error) {
+      document.getElementById('integrations-loader').style.display = 'none';
+      document.getElementById('integrations-form-content').style.display = 'none';
+      const errorDiv = document.getElementById('integrations-error');
+      // error might be an Error object or the {error: "message"} object from backend
+      let errorMessage = "Failed to load integration settings.";
+      if (typeof error === 'string') {
+          errorMessage = error;
+      } else if (error && error.message) { // Standard JS Error object
+          errorMessage = error.message;
+      } else if (error && error.error) { // Custom {error: "message"} object
+          errorMessage = error.error;
+      }
+      
+      errorDiv.textContent = "Error: " + errorMessage;
+      errorDiv.style.display = 'block';
+      console.error("Settings load failure: ", error);
+    }
+    
+    // Call loadInitialSettings when the modal's content is ready
+    window.addEventListener('load', loadInitialSettings);
+    
+    // These variables will be defined when DOM is fully loaded
+    let statusDiv;
+    let loadingIndicator;
+    let saveApiKeysBtn;
+    let saveDriveFolderBtn;
+    let syncDriveAssetsBtn;
+    let fetchAnalyticsBtn;
+    
+    // Initialize element references when window loads
+    window.addEventListener('load', function() {
+      // Define references to HTML elements for use in other functions
+      statusDiv = document.getElementById('statusMessage');
+      loadingIndicator = document.getElementById('loadingIndicator');
+  
+      // Buttons
+      saveApiKeysBtn = document.getElementById('saveApiKeysBtn');
+      saveDriveFolderBtn = document.getElementById('saveDriveFolderBtn');
+      syncDriveAssetsBtn = document.getElementById('syncDriveAssetsBtn');
+      fetchAnalyticsBtn = document.getElementById('fetchAnalyticsBtn');
+    });
+
+    function showLoading(message) {
+      if (statusDiv) statusDiv.style.display = 'none';
+      if (loadingIndicator) {
+        loadingIndicator.innerHTML = `<div class="loader"></div> ${message || 'Processing...'}`;
+        loadingIndicator.style.display = 'block';
+      }
+      disableButtons(true);
+    }
+
+    function hideLoading() {
+      if (loadingIndicator) loadingIndicator.style.display = 'none';
+      disableButtons(false);
+    }
+    
+    function disableButtons(disabled) {
+      if (saveApiKeysBtn) saveApiKeysBtn.disabled = disabled;
+      if (saveDriveFolderBtn) saveDriveFolderBtn.disabled = disabled;
+      if (syncDriveAssetsBtn) syncDriveAssetsBtn.disabled = disabled;
+      if (fetchAnalyticsBtn) fetchAnalyticsBtn.disabled = disabled;
+    }
+
+    function showStatus(message, type) { // type can be 'success', 'error', 'info'
+      if (statusDiv) {
+        statusDiv.textContent = message;
+        statusDiv.className = 'status-message ' + type;
+        statusDiv.style.display = 'block';
+        // setTimeout(() => { statusDiv.style.display = 'none'; }, 7000); // Auto-hide after 7s
+      }
+    }
+
+    // Legacy function for backward compatibility
+    function loadSettings() {
+      loadInitialSettings();
+    }
+
+    function saveApiKeys() {
+      showLoading('Saving API keys...');
+      // Get references to elements
+      const twitterApiKeyEl = document.getElementById('twitterApiKey');
+      const twitterApiSecretEl = document.getElementById('twitterApiSecret');
+      const youtubeApiKeyEl = document.getElementById('youtubeApiKey');
+      const telegramBotTokenEl = document.getElementById('telegramBotToken');
+      
+      const keys = {
+        twitterApiKey: twitterApiKeyEl.value.trim(),
+        twitterApiSecret: twitterApiSecretEl.value.trim(),
+        youtubeApiKey: youtubeApiKeyEl.value.trim(),
+        telegramBotToken: telegramBotTokenEl.value.trim()
+      };
+      google.script.run
+        .withSuccessHandler(function(response) {
+          hideLoading();
+          if (response.success) {
+            showStatus(response.message, 'success');
+          } else {
+            showStatus(response.message || 'Failed to save API keys.', 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          hideLoading();
+          showStatus('Error saving API keys: ' + (err.message || err), 'error');
+        })
+        .saveApiKeys(keys);
+    }
+
+    function saveDriveFolderId() {
+      const driveFolderIdEl = document.getElementById('driveFolderId');
+      const currentDriveFolderNameEl = document.getElementById('currentDriveFolderName');
+      const folderId = driveFolderIdEl.value.trim();
+      if (!folderId) {
+        showStatus('Please enter a Google Drive Folder ID.', 'error');
+        return;
+      }
+      showLoading('Connecting Drive folder...');
+      google.script.run
+        .withSuccessHandler(function(response) {
+          hideLoading();
+          if (response.success) {
+            showStatus(response.message, 'success');
+            currentDriveFolderNameEl.textContent = response.folderName || 'Connected';
+            driveFolderIdEl.value = folderId; // ensure displayed ID is what was processed
+          } else {
+            showStatus(response.message || 'Failed to connect Drive folder.', 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          hideLoading();
+          showStatus('Error connecting Drive folder: ' + (err.message || err), 'error');
+        })
+        .saveGoogleDriveFolderId(folderId);
+    }
+
+    function syncDriveAssets() {
+      showLoading('Syncing Drive assets...');
+      google.script.run
+        .withSuccessHandler(function(response) {
+          hideLoading();
+          if (response.success) {
+            showStatus(response.message, 'success');
+          } else {
+            showStatus(response.message || 'Failed to sync Drive assets.', 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          hideLoading();
+          showStatus('Error syncing Drive assets: ' + (err.message || err), 'error');
+        })
+        .syncGoogleDriveAssets();
+    }
+
+    function fetchAnalytics() {
+      showLoading('Initiating analytics fetch...');
+      // Note: fetchContentAnalytics itself might show a GSheet modal for progress.
+      // This modal will just indicate initiation and final result.
+      google.script.run
+        .withSuccessHandler(function(response) {
+          hideLoading();
+           if (response.success) {
+            showStatus(response.message, 'success');
+            // Reload settings to update "Last Sync" time
+            loadSettings(); 
+          } else {
+            showStatus(response.message || 'Failed to fetch analytics.', 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          hideLoading();
+          showStatus('Error fetching analytics: ' + (err.message || err), 'error');
+        })
+        .fetchContentAnalytics();
+    }
+
+  </script>
+</body>
+</html>

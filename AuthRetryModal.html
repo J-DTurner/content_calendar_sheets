@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <style>
+      body { padding: 20px; font-family: Arial, sans-serif; }
+      .error-section { margin-bottom: 15px; }
+      .error-title { font-weight: bold; color: #c00; margin-bottom: 5px; }
+      .error-details { white-space: pre-wrap; background-color: #f9f2f2; padding: 10px; border: 1px solid #e6b8b8; border-radius: 4px; max-height: 200px; overflow-y: auto; }
+      .button-bar { margin-top: 20px; text-align: right; }
+      .button-bar button { margin-left: 10px; }
+      .loader { display: none; margin: 10px auto; width: 24px; height: 24px; border: 3px solid #f3f3f3; border-top: 3px solid #4285f4; border-radius: 50%; animation: spin 1s linear infinite; }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <h3>Authorization & Configuration Issues</h3>
+    <p>The script encountered issues while trying to authorize necessary Google services or access configured resources. Please review the details below.</p>
+
+    <div id="error-messages-container">
+      <?!= errorMessagesHtml ?>
+    </div>
+    
+    <div id="loader" class="loader"></div>
+    <p id="status-message" style="text-align:center; display:none;"></p>
+
+    <div class="button-bar">
+      <button class="action" id="retryButton" onclick="retryAuthProcess()">Retry Authorization</button>
+      <button onclick="google.script.host.close()">Close</button>
+    </div>
+
+    <script>
+      function retryAuthProcess() {
+        const errorContainer = document.getElementById('error-messages-container');
+        const retryButton = document.getElementById('retryButton');
+        const loader = document.getElementById('loader');
+        const statusMessage = document.getElementById('status-message');
+
+        retryButton.disabled = true;
+        loader.style.display = 'block';
+        statusMessage.style.display = 'none';
+        errorContainer.style.display = 'none'; // Hide old errors during retry
+
+        google.script.run
+          .withSuccessHandler(function(result) {
+            loader.style.display = 'none';
+            retryButton.disabled = false;
+            if (result.success) {
+              statusMessage.textContent = 'Authorization & Configuration Successful! You can close this window.';
+              statusMessage.style.color = 'green';
+              statusMessage.style.display = 'block';
+              retryButton.style.display = 'none'; // Hide retry on success
+              errorContainer.innerHTML = ""; // Clear any previous errors
+            } else {
+              statusMessage.textContent = 'Retry attempt also encountered issues. See details below.';
+              statusMessage.style.color = 'red';
+              statusMessage.style.display = 'block';
+              errorContainer.innerHTML = result.errorMessagesHtml; // Display new/old errors
+              errorContainer.style.display = 'block'; 
+            }
+          })
+          .withFailureHandler(function(error) {
+            loader.style.display = 'none';
+            retryButton.disabled = false;
+            statusMessage.textContent = 'An error occurred: ' + error.message;
+            statusMessage.style.color = 'red';
+            statusMessage.style.display = 'block';
+            // errorContainer.innerHTML = "Failed to communicate with the server for retry."; // Or show original errors
+            errorContainer.style.display = 'block'; 
+          })
+          .rerunAuthorizationProcessFromModal();
+      }
+    </script>
+  </body>
+</html>

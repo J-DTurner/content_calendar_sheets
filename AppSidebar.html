@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <style>
+      body { position: relative; } /* For positioning loader if needed */
+      .container { padding: 10px; display: none; /* Initially hidden */ }
+      .section { margin-bottom: 15px; }
+      .section-title { font-weight: bold; margin-bottom: 5px; padding-bottom: 3px; border-bottom: 1px solid #eee; }
+      button { margin-top: 5px; margin-right: 5px; }
+      .button-block { display: block; width: calc(100% - 10px); margin-bottom: 5px;}
+      .status-message { margin-top: 10px; padding: 8px; border-radius: 4px; display: none; }
+      .success { background-color: #e6ffed; border: 1px solid #5cb85c; color: #3d8b3d; }
+      .error { background-color: #f2dede; border: 1px solid #a94442; color: #a94442; }
+
+      /* Loader Styles */
+      #sidebar-loader {
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        z-index: 100;
+      }
+      .spinner {
+        border: 4px solid #f3f3f3; /* Light grey */
+        border-top: 4px solid #3498db; /* Blue */
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 10px auto;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sidebar-loader">
+      <div class="spinner"></div>
+      <p>Loading Panel...</p>
+    </div>
+
+    <div class="container" id="main-content"> <!-- Main content wrapper -->
+      <div class="section">
+        <div class="section-title">Setup & Core</div>
+        <button onclick="runInitializeCalendar()">⚙️ Setup/Verify Calendar</button>
+        <button onclick="runAuthorizeServices()">🔑 Authorize Services</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Content Management</div>
+        <button class="button-block" onclick="runAddNewContent()">➕ Add New Content Item</button>
+        <button class="button-block" onclick="runGenerateWeekNumbers()">🗓️ Generate Week Numbers</button>
+        <button class="button-block" onclick="runUpdateDataValidation()">✔️ Update Data Validation</button>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">Tools & Views</div>
+        <button class="button-block" onclick="runNavigateToDashboard()">📊 View Dashboard</button>
+        <button class="button-block" onclick="runGenerateReport()">📄 Generate Content Report</button>
+         <button class="button-block" onclick="runShowHelp()">❓ Help & Documentation</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Integrations & Advanced</div>
+        <button class="button-block" onclick="runOpenMenu('Integrations')">🔗 Integrations Menu</button>
+        <button class="button-block" onclick="runOpenMenu('Templates')">📋 Templates Menu</button>
+        <button class="button-block" onclick="runOpenMenu('Notifications')">🔔 Notifications Menu</button>
+        <button class="button-block" onclick="runOpenMenu('CalendarSync')">📅 Calendar Sync Menu</button>
+        <button class="button-block" onclick="runOpenMenu('Search')">🔍 Search & Filter Menu</button>
+        <button class="button-block" onclick="runOpenMenu('Workflow')">⚙️ Workflow Automation Menu</button>
+         <button class="button-block" onclick="runOpenMenu('DateTools')">📆 Date Tools Menu</button>
+      </div>
+
+      <div id="statusMessage" class="status-message"></div>
+    </div>
+
+    <script>
+      // Show loader initially, then reveal content
+      window.addEventListener('load', function() {
+        // You can add a slight delay for visual effect if desired
+        // setTimeout(function() {
+          document.getElementById('sidebar-loader').style.display = 'none';
+          document.getElementById('main-content').style.display = 'block';
+        // }, 200); // Optional delay
+      });
+
+      function showStatus(message, isSuccess) {
+        var statusDiv = document.getElementById('statusMessage');
+        statusDiv.textContent = message;
+        statusDiv.className = 'status-message ' + (isSuccess ? 'success' : 'error');
+        statusDiv.style.display = 'block';
+        setTimeout(function() { statusDiv.style.display = 'none'; }, 5000);
+      }
+
+      function runInitializeCalendar() {
+        google.script.run
+          .withSuccessHandler(function() { showStatus('Calendar Initialization started.', true); })
+          .withFailureHandler(function(err) { showStatus('Error starting initialization: ' + (err.message || err), false); })
+          .initializeContentCalendar({});
+      }
+
+      function runAuthorizeServices() {
+        google.script.run
+          .withSuccessHandler(function(successBoolean) { 
+            // successBoolean is true if general auth succeeded, false if cancelled or failed
+            if (successBoolean) {
+              showStatus('Authorization and configuration checks initiated. Please review any alerts from Google or the script for details.', true);
+            } else {
+              showStatus('Authorization/configuration checks were cancelled or one or more services could not be authorized. See logs/alerts.', false);
+            }
+          })
+          .withFailureHandler(function(err) { 
+            showStatus('Error initiating authorization/configuration checks: ' + (err.message || err), false); 
+            console.error("Error from triggerFullAuthAndConfigCheckFromPanel: ", err);
+          })
+          .triggerFullAuthAndConfigCheckFromPanel();
+      }
+
+      function runAddNewContent() {
+        google.script.run
+          .withSuccessHandler(function() { /* Optionally focus sheet */ })
+          .withFailureHandler(function(err) { showStatus('Error adding content: ' + (err.message || err), false); })
+          .addNewContentItem();
+      }
+      
+      function runGenerateWeekNumbers() {
+        google.script.run
+          .withSuccessHandler(function() { showStatus('Week numbers generated/verified.', true); })
+          .withFailureHandler(function(err) { showStatus('Error generating week numbers: ' + (err.message || err), false); })
+          .generateWeekNumbers();
+      }
+
+      function runUpdateDataValidation() {
+        google.script.run
+          .withSuccessHandler(function() { showStatus('Data validation updated.', true); })
+          .withFailureHandler(function(err) { showStatus('Error updating validation: ' + (err.message || err), false); })
+          .updateDataValidation();
+      }
+      
+      function runNavigateToDashboard() {
+        google.script.run.navigateToDashboard();
+      }
+
+      function runGenerateReport() {
+        google.script.run
+          .withSuccessHandler(function() { /* Report generated, sheet is active */ })
+          .withFailureHandler(function(err) { showStatus('Error generating report: ' + (err.message || err), false); })
+          .generateContentReport();
+      }
+      
+      function runShowHelp() {
+        google.script.run.showHelpDocumentation();
+      }
+
+      function runOpenMenu(menuName) {
+        if (menuName === 'Integrations') {
+          google.script.run
+            .withSuccessHandler(function() { 
+              // Logger.log("Integrations Modal dialog opened by server."); // Client-side Logger doesn't exist
+              console.log("Integrations Modal dialog opened by server.");
+            })
+            .withFailureHandler(function(err) { 
+              showStatus('Error opening Integrations Menu: ' + (err.message || err), false); 
+              console.error("Error opening Integrations Menu: ", err);
+            })
+            .openIntegrationsDialog();
+        } else {
+          showStatus('Opening "' + menuName + '" specific functions would typically be in a dedicated modal or separate sidebar section.', true);
+          console.log("User clicked to open menu: " + menuName + ". Actual menu display logic needs server-side or client-side modal/UI change.");
+        }
+      }
+    </script>
+  </body>
+</html>

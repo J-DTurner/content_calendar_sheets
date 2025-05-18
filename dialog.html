@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Application</title>
+  <style>
+    /* Optional: Basic styling for messages */
+    #auth-status-message, #init-status-message, #error-display {
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      background-color: #f9f9f9;
+    }
+    #error-display {
+      border-color: red;
+      background-color: #ffeeee;
+    }
+  </style>
+</head>
+<body>
+  <!-- Add these elements, ideally at the beginning of your body or in a dedicated status area -->
+  <div id="auth-status-message">Checking authorization, please wait...</div>
+  <div id="init-status-message" style="display:none;">Initializing connections, please wait...</div>
+  <div id="error-display" style="display:none; color: red;"></div>
+  <div id="main-application-content" style="display:none;">
+    <p>Application is ready to use.</p>
+    <!-- Your existing application UI components will eventually go here or be unhidden -->
+  </div>
+
+  <!-- Remove any old button that was used to trigger authorization manually -->
+  <!-- Example: <button id="authorizeButton">Authorize</button> -->
+  
+  <script>
+    // Helper function to update UI messages
+    function updateStatusMessage(authMsg, initMsg, errorMsg, showMainContent) {
+      document.getElementById('auth-status-message').style.display = authMsg ? 'block' : 'none';
+      if (authMsg) document.getElementById('auth-status-message').textContent = authMsg;
+
+      document.getElementById('init-status-message').style.display = initMsg ? 'block' : 'none';
+      if (initMsg) document.getElementById('init-status-message').textContent = initMsg;
+
+      document.getElementById('error-display').style.display = errorMsg ? 'block' : 'none';
+      if (errorMsg) document.getElementById('error-display').textContent = errorMsg;
+
+      document.getElementById('main-application-content').style.display = showMainContent ? 'block' : 'none';
+    }
+
+    // Main function to start the application loading sequence
+    function startAppLoadSequence() {
+      updateStatusMessage("Checking authorization, please wait...", null, null, false);
+      google.script.run
+        .withSuccessHandler(handleAuthSuccess) // Defined in Chunk 5
+        .withFailureHandler(handleAuthFailure) // Defined in Chunk 6
+        .checkAuthorizationAndTriggerPrompt(); // Calls backend function (Chunk 1)
+    }
+
+    // Ensure any old authorization button and its click listener are removed.
+    // For example, if you had:
+    // document.getElementById('authorizeButton').addEventListener('click', oldAuthFunction);
+    // Remove that line and the 'authorizeButton' HTML element (as per Chunk 3).
+
+    function handleAuthSuccess(response) {
+      // Expected response: { status: "success", message: "Authorization check passed." }
+      // or potentially { status: "error", message: "..." } if the backend function itself had an issue post-auth dialog
+      console.log('Authorization successful:', response);
+
+      if (response && response.status === "success") {
+        updateStatusMessage(null, "Authorization confirmed. Initializing connections, please wait...", null, false);
+
+        google.script.run
+          .withSuccessHandler(handleInitializationSuccess) // Defined in Chunk 7
+          .withFailureHandler(handleInitializationFailure) // Defined in Chunk 8
+          .initializeCoreServices(); // Calls backend function (Chunk 2)
+      } else {
+        // This case handles if checkAuthorizationAndTriggerPrompt returned an error object instead of throwing.
+        var errorMessage = "Authorization check completed but reported an issue.";
+        if(response && response.message) {
+            errorMessage = "Authorization Issue: " + response.message;
+        } else if (typeof response === 'string') {
+            errorMessage = "Authorization Issue: " + response;
+        }
+        console.error(errorMessage);
+        updateStatusMessage(null, null, errorMessage, false);
+      }
+    }
+    
+    // Handle authorization failure
+    function handleAuthFailure(error) {
+      console.error('Authorization failed:', error);
+      var errorMessage = "Authorization failed or was denied. Please ensure you grant necessary permissions. You may need to reload and try again.";
+      
+      // Attempt to categorize the error based on message content
+      if (error && error.message) {
+        // Apps Script often wraps errors. error.message might be the server-side error.
+        let errorType = determineErrorType(error.message);
+        
+        // Provide more specific guidance based on error type
+        if (errorType === "PERMISSION") {
+          errorMessage = "Permission Error: " + error.message + ". Please grant the necessary permissions and reload.";
+        } else if (errorType === "NETWORK") {
+          errorMessage = "Network Error: " + error.message + ". Please check your connection and reload.";
+        } else {
+          errorMessage = "Authorization Error: " + error.message + ". Please reload and try again.";
+        }
+      } else if (typeof error === 'string') {
+        let errorType = determineErrorType(error);
+        if (errorType === "PERMISSION") {
+          errorMessage = "Permission Error: " + error + ". Please grant the necessary permissions and reload.";
+        } else if (errorType === "NETWORK") {
+          errorMessage = "Network Error: " + error + ". Please check your connection and reload.";
+        } else {
+          errorMessage = "Authorization Error: " + error + ". Please reload and try again.";
+        }
+      }
+      
+      updateStatusMessage(null, null, errorMessage, false);
+    }
+    
+    // Helper function to determine error type from message
+    function determineErrorType(message) {
+      if (!message) return "UNKNOWN";
+      
+      message = message.toLowerCase();
+      if (message.includes("permission") || message.includes("access denied") || 
+          message.includes("not authorized") || message.includes("authorization")) {
+        return "PERMISSION";
+      } else if (message.includes("network") || message.includes("timeout") || 
+                message.includes("connection") || message.includes("offline")) {
+        return "NETWORK";  
+      } else {
+        return "UNKNOWN";
+      }
+    }
+    
+    // Handle successful initialization
+    function handleInitializationSuccess(response) {
+      // Expected response on success: { success: true, message: "..." }
+      // Expected response on handled failure: { success: false, error: "..." }
+      console.log('Initialization response:', response);
+
+      if (response && response.success) {
+        updateStatusMessage(null, null, null, true); // Hide status, show main content
+        // You can also use response.message to show a more specific success message if desired,
+        // for example, by adding another UI element or updating 'main-application-content'.
+        // For now, main-application-content has a generic "Application is ready" message.
+        // If you want to use the message from backend:
+        // document.getElementById('main-application-content').innerHTML = '<p>' + response.message + '</p>';
+        document.getElementById('init-status-message').style.display = 'none'; // Ensure init message is hidden
+         // Optionally display the success message from backend:
+         // updateStatusMessage(null, response.message, null, true); // This would put it in init-status-message spot
+         // A better way might be a dedicated final status element or alert.
+         // For now, main-application-content appears.
+      } else {
+        var errorMessage = "Initialization completed but reported an issue.";
+        if (response && response.error) {
+          errorMessage = "Initialization Failed: " + response.error;
+        } else if (typeof response === 'string') {
+            errorMessage = "Initialization Failed: " + response;
+        }
+        console.error(errorMessage);
+        updateStatusMessage(null, null, errorMessage, false);
+      }
+    }
+    
+    function handleInitializationFailure(error) {
+      console.error('Initialization call failed:', error);
+      var errorMessage = "A critical error occurred during application initialization.";
+      if (error && error.message) {
+        errorMessage = "Initialization Error: " + error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = "Initialization Error: " + error;
+      }
+      updateStatusMessage(null, null, errorMessage, false);
+    }
+
+    // Call the main function when the window loads
+    window.onload = startAppLoadSequence; // Or use document.addEventListener('DOMContentLoaded', startAppLoadSequence);
+  </script>
+</body>
+</html>

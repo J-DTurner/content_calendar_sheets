@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Asset Management System</title>
+  <?!= include('CSS'); ?>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Asset Management System</h1>
+      <div id="auth-status"></div>
+    </header>
+    
+    <main>
+      <section id="project-list">
+        <h2>Projects</h2>
+        <div id="projects-container">
+          <!-- Project items will be dynamically loaded here -->
+          <div class="loading">Loading projects...</div>
+        </div>
+      </section>
+    </main>
+    
+    <!-- Asset Modal Dialog -->
+    <div id="assetModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="close">&times;</span>
+          <h2>Asset for Project: <span id="modalProjectId"></span></h2>
+        </div>
+        
+        <!-- Asset Choice View -->
+        <div id="assetChoiceView" class="modal-view">
+          <h3>How would you like to add an asset?</h3>
+          <div class="choice-buttons">
+            <button id="uploadNewButton" class="action-button">Upload New Asset</button>
+            <button id="chooseExistingButton" class="action-button">Choose Existing Asset</button>
+          </div>
+        </div>
+        
+        <!-- Upload New Asset View -->
+        <div id="uploadNewAssetView" class="modal-view" style="display: none;">
+          <h3>Upload New Asset</h3>
+          <form id="uploadForm">
+            <div class="form-group">
+              <label for="fileUpload">Select file to upload:</label>
+              <input type="file" id="fileUpload" name="fileUpload">
+            </div>
+            <div class="form-actions">
+              <button type="button" id="backToChoiceFromUpload" class="back-button">Back</button>
+              <button type="button" id="uploadAssetButton" class="submit-button">Upload & Associate</button>
+            </div>
+          </form>
+          <div id="uploadStatus" class="status-message"></div>
+        </div>
+        
+        <!-- Choose Existing Asset View -->
+        <div id="chooseExistingAssetView" class="modal-view" style="display: none;">
+          <h3>Choose Existing Asset</h3>
+          <div id="existingAssetsList">
+            <div class="loading">Loading files...</div>
+          </div>
+          <div class="form-actions">
+            <button type="button" id="backToChoiceFromExisting" class="back-button">Back</button>
+          </div>
+          <div id="selectionStatus" class="status-message"></div>
+        </div>
+        
+      </div>
+    </div>
+    
+    <footer>
+      <p>&copy; 2023 Asset Management System</p>
+    </footer>
+  </div>
+  
+  <?!= include('JavaScript'); ?>
+</body>
+</html>
