@@ -7,6 +7,13 @@ var ROW_ID_COLUMN_NAME;
 var ASSET_ACTION_COL_IDX;
 var ROW_ID_COL_IDX;
 
+const SETTINGS_CONFIG = {
+  SETTINGS_SHEET: 'Settings',
+  CONTENT_SHEET_CELL: 'B39',
+  ASSET_ACTION_COLUMN_CELL: 'B40',
+  ROW_ID_COLUMN_CELL: 'B41'
+};
+
 /**
  * Automatically runs when the spreadsheet is opened.
  * Creates the Asset Management menu with options.
@@ -31,57 +38,49 @@ function onOpen() {
 }
 
 /**
- * Loads configuration settings from the Config sheet.
+ * Loads configuration settings from the Settings sheet.
  * @return {boolean} True if configuration loaded successfully, false otherwise.
  */
 function loadConfig() {
   try {
-    // Get the active spreadsheet and the Config sheet
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var configSheet = ss.getSheetByName('Config');
-    
-    // Check if Config sheet exists
-    if (!configSheet) {
-      Logger.log('Error: Config sheet not found.');
-      SpreadsheetApp.getUi().alert('Error: Config sheet not found. Please create a Config sheet with required settings.');
-      return false;
-    }
-    
-    // Read all data from the Config sheet
-    var configData = configSheet.getDataRange().getValues();
-    
-    // Reset CONFIG object
-    CONFIG = {};
-    
-    // Populate CONFIG object from the data (assuming key-value pairs in columns A and B)
-    for (var i = 1; i < configData.length; i++) {  // Skip header row
-      if (configData[i][0] && configData[i][1]) {
-        CONFIG[configData[i][0]] = configData[i][1];
+    var settingsSheet = ss.getSheetByName(SETTINGS_CONFIG.SETTINGS_SHEET);
+
+    if (!settingsSheet) {
+      Logger.log('Settings sheet not found when loading config.');
+      if (typeof initializeMainSheets === 'function') {
+        initializeMainSheets(ss, false, true, false); // attempt to create Settings sheet
+        settingsSheet = ss.getSheetByName(SETTINGS_CONFIG.SETTINGS_SHEET);
+      }
+      if (!settingsSheet) {
+        SpreadsheetApp.getUi().alert('Error: Settings sheet not found. Please run setup to create it.');
+        return false;
       }
     }
-    
-    // Check for obsolete AssetFolderID in Config sheet
-    if (CONFIG.AssetFolderID) {
-      Logger.log('WARNING: Obsolete "AssetFolderID" found in "Config" sheet. Please remove it. The primary assets folder is now configured in the "Settings" sheet (cell B18).');
-      // Optionally, you could delete it from CONFIG to prevent accidental use:
-      // delete CONFIG.AssetFolderID;
+
+    if (typeof setupSettings === 'function') {
+      try { setupSettings(settingsSheet, true); } catch(_) {}
     }
-    
-    // Set global variables from CONFIG
-    CONTENT_SHEET_NAME = CONFIG.ContentSheetName;
-    ASSET_ACTION_COLUMN_NAME = CONFIG.AssetActionColumnName;
-    ROW_ID_COLUMN_NAME = CONFIG.RowIdColumnName;
+
+    CONFIG = {};
+    CONTENT_SHEET_NAME = settingsSheet.getRange(SETTINGS_CONFIG.CONTENT_SHEET_CELL).getValue() || 'Content Calendar';
+    ASSET_ACTION_COLUMN_NAME = settingsSheet.getRange(SETTINGS_CONFIG.ASSET_ACTION_COLUMN_CELL).getValue() || 'Asset Action';
+    ROW_ID_COLUMN_NAME = settingsSheet.getRange(SETTINGS_CONFIG.ROW_ID_COLUMN_CELL).getValue() || 'ID';
+
+    CONFIG.ContentSheetName = CONTENT_SHEET_NAME;
+    CONFIG.AssetActionColumnName = ASSET_ACTION_COLUMN_NAME;
+    CONFIG.RowIdColumnName = ROW_ID_COLUMN_NAME;
     
     // Validate essential settings
     if (!CONTENT_SHEET_NAME) {
-      Logger.log('Error: ContentSheetName not found in Config.');
-      SpreadsheetApp.getUi().alert('Error: ContentSheetName not found in Config sheet.');
+      Logger.log('Error: ContentSheetName not found in Settings.');
+      SpreadsheetApp.getUi().alert('Error: ContentSheetName not found in Settings sheet.');
       return false;
     }
-    
+
     if (!ASSET_ACTION_COLUMN_NAME) {
-      Logger.log('Error: AssetActionColumnName not found in Config.');
-      SpreadsheetApp.getUi().alert('Error: AssetActionColumnName not found in Config sheet.');
+      Logger.log('Error: AssetActionColumnName not found in Settings.');
+      SpreadsheetApp.getUi().alert('Error: AssetActionColumnName not found in Settings sheet.');
       return false;
     }
     

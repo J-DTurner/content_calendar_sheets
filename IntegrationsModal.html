@@ -90,6 +90,25 @@
       </div>
 
       <div class="section">
+        <h3>Asset Management Settings</h3>
+        <div class="form-row">
+          <label for="contentSheetName">Content Sheet Name:</label>
+          <input type="text" id="contentSheetName" name="contentSheetName">
+        </div>
+        <div class="form-row">
+          <label for="assetActionColumnName">Asset Action Column Name:</label>
+          <input type="text" id="assetActionColumnName" name="assetActionColumnName">
+        </div>
+        <div class="form-row">
+          <label for="rowIdColumnName">Row ID Column Name:</label>
+          <input type="text" id="rowIdColumnName" name="rowIdColumnName">
+        </div>
+        <div class="button-group">
+          <button id="saveAssetConfigBtn" class="primary" onclick="saveAssetConfig()">Save Asset Settings</button>
+        </div>
+      </div>
+
+      <div class="section">
         <h3>Content Analytics</h3>
         <p>Last Sync: <span id="lastAnalyticsSync" class="current-value">Never</span></p>
         <div class="button-group">
@@ -138,6 +157,9 @@
       const driveFolderIdEl = document.getElementById('driveFolderId');
       const currentDriveFolderNameEl = document.getElementById('currentDriveFolderName');
       const lastAnalyticsSyncEl = document.getElementById('lastAnalyticsSync');
+      const contentSheetNameEl = document.getElementById('contentSheetName');
+      const assetActionColumnNameEl = document.getElementById('assetActionColumnName');
+      const rowIdColumnNameEl = document.getElementById('rowIdColumnName');
   
       // Populate form fields with settings data
       if (twitterApiKeyEl) twitterApiKeyEl.value = settings.twitterApiKey || '';
@@ -146,6 +168,9 @@
       if (telegramBotTokenEl) telegramBotTokenEl.value = settings.telegramBotToken || '';
       if (driveFolderIdEl) driveFolderIdEl.value = settings.driveFolderId || '';
       if (currentDriveFolderNameEl) currentDriveFolderNameEl.textContent = settings.driveFolderName || 'Not Connected';
+      if (contentSheetNameEl) contentSheetNameEl.value = settings.contentSheetName || '';
+      if (assetActionColumnNameEl) assetActionColumnNameEl.value = settings.assetActionColumnName || '';
+      if (rowIdColumnNameEl) rowIdColumnNameEl.value = settings.rowIdColumnName || '';
       
       if (lastAnalyticsSyncEl) {
         if (settings.lastAnalyticsSync === 'Never' || !settings.lastAnalyticsSync) {
@@ -189,6 +214,7 @@
     let saveDriveFolderBtn;
     let syncDriveAssetsBtn;
     let fetchAnalyticsBtn;
+    let saveAssetConfigBtn;
     
     // Initialize element references when window loads
     window.addEventListener('load', function() {
@@ -201,6 +227,7 @@
       saveDriveFolderBtn = document.getElementById('saveDriveFolderBtn');
       syncDriveAssetsBtn = document.getElementById('syncDriveAssetsBtn');
       fetchAnalyticsBtn = document.getElementById('fetchAnalyticsBtn');
+      saveAssetConfigBtn = document.getElementById('saveAssetConfigBtn');
     });
 
     function showLoading(message) {
@@ -222,6 +249,7 @@
       if (saveDriveFolderBtn) saveDriveFolderBtn.disabled = disabled;
       if (syncDriveAssetsBtn) syncDriveAssetsBtn.disabled = disabled;
       if (fetchAnalyticsBtn) fetchAnalyticsBtn.disabled = disabled;
+      if (saveAssetConfigBtn) saveAssetConfigBtn.disabled = disabled;
     }
 
     function showStatus(message, type) { // type can be 'success', 'error', 'info'
@@ -311,6 +339,29 @@
           showStatus('Error syncing Drive assets: ' + (err.message || err), 'error');
         })
         .syncGoogleDriveAssets();
+    }
+
+    function saveAssetConfig() {
+      showLoading('Saving asset settings...');
+      const cfg = {
+        contentSheetName: document.getElementById('contentSheetName').value.trim(),
+        assetActionColumnName: document.getElementById('assetActionColumnName').value.trim(),
+        rowIdColumnName: document.getElementById('rowIdColumnName').value.trim()
+      };
+      google.script.run
+        .withSuccessHandler(function(response){
+          hideLoading();
+          if(response.success){
+            showStatus(response.message, 'success');
+          } else {
+            showStatus(response.message || 'Failed to save settings.', 'error');
+          }
+        })
+        .withFailureHandler(function(err){
+          hideLoading();
+          showStatus('Error saving settings: ' + (err.message || err), 'error');
+        })
+        .saveAssetConfig(cfg);
     }
 
     function fetchAnalytics() {
