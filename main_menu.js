@@ -1029,70 +1029,79 @@ function setupSettings(sheet, preserveExisting = false) {
          sheet.getRange(startRow, 1, group.text.length, sheet.getRange(group.range).getNumColumns()).mergeAcross(); 
          Logger.log(`Wrote instructions for ${group.section}`);
     } else if (group.items) {
-        group.items.forEach(item => {
-          const labelCell = sheet.getRange(item.row, 1); 
-          const valueCell = sheet.getRange(item.targetCell); // Must use targetCell
-
-          if (labelCell.getValue() !== item.label) {
-              labelCell.setValue(item.label).setFontWeight('bold').setHorizontalAlignment('right');
-          }
-
-          let valueToSet = item.defaultValue;
-          if (preserveExisting && existingSettings.hasOwnProperty(item.key)) {
-              const preserved = existingSettings[item.key];
-              if (item.type === 'checkbox') {
-                 valueToSet = (preserved === true || preserved?.toString().toLowerCase() === 'true');
-              } else if (item.format === 'yyyy-mm-dd' && !(preserved instanceof Date)) {
-                  try {
-                      const parsedDate = new Date(preserved);
-                      valueToSet = isNaN(parsedDate.valueOf()) ? item.defaultValue : parsedDate;
-                  } catch (_) { valueToSet = item.defaultValue; }
-              } else {
-                 valueToSet = preserved;
+      // If we're just verifying existing settings in the Settings sheet, do not overwrite Asset Management values
+      if (preserveExisting && group.section === 'ASSET MANAGEMENT') {
+          group.items.forEach(item => {
+              const labelCell = sheet.getRange(item.row, 1);
+              if (labelCell.getValue() !== item.label) {
+                  labelCell.setValue(item.label).setFontWeight('bold').setHorizontalAlignment('right');
               }
-          }
-          
-          // Set value only if not preserving, or if it's readOnly, or if blank, or if value actually changed
-          const currentValue = valueCell.getValue();
-          let needsUpdate = !preserveExisting || item.readOnly || valueCell.isBlank();
-          if (preserveExisting && !item.readOnly && !valueCell.isBlank()) {
-              if (item.type === 'checkbox') {
-                  needsUpdate = valueCell.isChecked() !== valueToSet; // For checkboxes
-              } else if (valueToSet instanceof Date && currentValue instanceof Date) {
-                  needsUpdate = valueToSet.getTime() !== currentValue.getTime();
-              } else {
-                  needsUpdate = currentValue?.toString() !== valueToSet?.toString();
-              }
-          }
+              // skip updating the valueCell when verifying
+          });
+      } else {
+          group.items.forEach(item => {
+            const labelCell = sheet.getRange(item.row, 1); 
+            const valueCell = sheet.getRange(item.targetCell); // Must use targetCell
 
-          if (needsUpdate) {
-              if (item.type === 'checkbox') {
-                 // Check if it's not already a checkbox
-                 const dataValidation = valueCell.getDataValidation();
-                 if (!dataValidation || dataValidation.getCriteriaType() !== SpreadsheetApp.DataValidationCriteria.CHECKBOX) {
-                    // Create checkbox validation
-                    const rule = SpreadsheetApp.newDataValidation().requireCheckbox().build();
-                    valueCell.setDataValidation(rule);
-                 }
-                 valueCell.setValue(valueToSet); // TRUE/FALSE for checkbox
-              } else {
-                 if (valueCell.getDataValidation()?.getCriteriaType() === SpreadsheetApp.DataValidationCriteria.CHECKBOX) {
-                     valueCell.setDataValidation(null); // Remove checkbox validation
-                 }
-                 valueCell.setValue(valueToSet);
-                 if (item.format) {
-                     valueCell.setNumberFormat(item.format);
-                 }
-              }
-              Logger.log(`Setting value for ${item.key} in ${item.targetCell} to: ${valueToSet}`);
-          }
+            if (labelCell.getValue() !== item.label) {
+                labelCell.setValue(item.label).setFontWeight('bold').setHorizontalAlignment('right');
+            }
 
-           if(item.readOnly) {
-              valueCell.setFontStyle('italic').setFontColor('#666666');
-           } else if (item.type !== 'checkbox') { 
-               valueCell.setFontStyle('normal').setFontColor(null); 
-           }
-        });
+            let valueToSet = item.defaultValue;
+            if (preserveExisting && existingSettings.hasOwnProperty(item.key)) {
+                const preserved = existingSettings[item.key];
+                if (item.type === 'checkbox') {
+                   valueToSet = (preserved === true || preserved?.toString().toLowerCase() === 'true');
+                } else if (item.format === 'yyyy-mm-dd' && !(preserved instanceof Date)) {
+                    try {
+                        const parsedDate = new Date(preserved);
+                        valueToSet = isNaN(parsedDate.valueOf()) ? item.defaultValue : parsedDate;
+                    } catch (_) { valueToSet = item.defaultValue; }
+                } else {
+                   valueToSet = preserved;
+                }
+            }
+            
+            // Determine if we need to update the valueCell
+            const currentValue = valueCell.getValue();
+            let needsUpdate = !preserveExisting || item.readOnly || valueCell.isBlank();
+            if (preserveExisting && !item.readOnly && !valueCell.isBlank()) {
+                if (item.type === 'checkbox') {
+                    needsUpdate = valueCell.isChecked() !== valueToSet;
+                } else if (valueToSet instanceof Date && currentValue instanceof Date) {
+                    needsUpdate = valueToSet.getTime() !== currentValue.getTime();
+                } else {
+                    needsUpdate = currentValue?.toString() !== valueToSet?.toString();
+                }
+            }
+
+            if (needsUpdate) {
+                if (item.type === 'checkbox') {
+                   const dataValidation = valueCell.getDataValidation();
+                   if (!dataValidation || dataValidation.getCriteriaType() !== SpreadsheetApp.DataValidationCriteria.CHECKBOX) {
+                      const rule = SpreadsheetApp.newDataValidation().requireCheckbox().build();
+                      valueCell.setDataValidation(rule);
+                   }
+                   valueCell.setValue(valueToSet);
+                } else {
+                   if (valueCell.getDataValidation()?.getCriteriaType() === SpreadsheetApp.DataValidationCriteria.CHECKBOX) {
+                       valueCell.setDataValidation(null);
+                   }
+                   valueCell.setValue(valueToSet);
+                   if (item.format) {
+                       valueCell.setNumberFormat(item.format);
+                   }
+                }
+                Logger.log(`Setting value for ${item.key} in ${item.targetCell} to: ${valueToSet}`);
+            }
+
+             if(item.readOnly) {
+                valueCell.setFontStyle('italic').setFontColor('#666666');
+             } else if (item.type !== 'checkbox') {
+                 valueCell.setFontStyle('normal').setFontColor(null);
+             }
+          });
+      }
     }
   });
 

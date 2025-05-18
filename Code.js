@@ -540,15 +540,7 @@ function linkAssetToRow(rowIdentifier, fileId, fileName) {
   try {
     // Set up the sheet data record
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var assetsSheet = ss.getSheetByName(ASSETS_SHEET_NAME);
-    
-    // Create the sheet if it doesn't exist
-    if (!assetsSheet) {
-      assetsSheet = ss.insertSheet(ASSETS_SHEET_NAME);
-      
-      // Set up headers if this is a new sheet
-      assetsSheet.appendRow(["Project ID", "File ID", "File Name", "Upload Date"]);
-    }
+    var assetsSheet = ensureAssetsSheetExists();
     
     // Prepare the row data
     var rowData = [rowIdentifier, fileId, fileName, new Date()];
@@ -731,15 +723,7 @@ function associateExistingAsset(projectId, fileIdToAssociate, fileNameToAssociat
     
     // Set up the sheet data record
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var assetsSheet = ss.getSheetByName(ASSETS_SHEET_NAME);
-    
-    // Create the sheet if it doesn't exist
-    if (!assetsSheet) {
-      assetsSheet = ss.insertSheet(ASSETS_SHEET_NAME);
-      
-      // Set up headers if this is a new sheet
-      assetsSheet.appendRow(["Project ID", "File ID", "File Name", "Association Date"]);
-    }
+    var assetsSheet = ensureAssetsSheetExists();
     
     // Prepare the row data
     var rowData = [projectId, fileIdToAssociate, fileNameToAssociate, new Date()];
@@ -905,15 +889,7 @@ function uploadAndAssociateAsset(fileObject, projectId) {
     
     // Set up the sheet data record
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var assetsSheet = ss.getSheetByName(ASSETS_SHEET_NAME);
-    
-    // Create the sheet if it doesn't exist
-    if (!assetsSheet) {
-      assetsSheet = ss.insertSheet(ASSETS_SHEET_NAME);
-      
-      // Set up headers if this is a new sheet
-      assetsSheet.appendRow(["Project ID", "File ID", "File Name", "Upload Date"]);
-    }
+    var assetsSheet = ensureAssetsSheetExists();
     
     // Prepare the row data
     var rowData = [projectId, fileId, fileName, new Date()];
