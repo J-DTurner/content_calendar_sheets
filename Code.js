@@ -90,7 +90,10 @@ function loadConfig() {
     if (contentSheet) {
       getHeaderIndexes(contentSheet);
     }
-    
+
+    // Ensure Assets sheet exists whenever configuration is loaded
+    ensureAssetsSheetExists();
+
     return true;
   } catch (e) {
     Logger.log('Error loading configuration: ' + e.toString());
@@ -318,23 +321,6 @@ function initializeOrRefreshAssetColumn() {
     return;
   }
   
-  // Create an asset map for quick lookup of row identifier to file ID
-  var assetMap = new Map();
-  
-  // Read data from the Assets sheet if it exists
-  if (assetsSheet) {
-    var assetLastRow = assetsSheet.getLastRow();
-    if (assetLastRow > 1) {  // If there's data beyond the header row
-      var assetData = assetsSheet.getRange(2, 1, assetLastRow - 1, 3).getValues();  // Get Project ID, File ID, File Name columns
-      
-      // Populate the asset map: Project/Row ID -> File ID
-      for (var i = 0; i < assetData.length; i++) {
-        if (assetData[i][0] && assetData[i][1]) {  // If Project ID and File ID are not empty
-          assetMap.set(assetData[i][0].toString(), assetData[i][1].toString());
-        }
-      }
-    }
-  }
   
   // Show a processing dialog
   var html = HtmlService.createHtmlOutput('<p>Processing asset column...</p>')
@@ -351,11 +337,8 @@ function initializeOrRefreshAssetColumn() {
     var actionCell = contentSheet.getRange(rowNum, ASSET_ACTION_COL_IDX);
     
     // Set cell value based on whether an asset exists for this row
-    if (assetMap.has(rowIdentifier)) {
-      actionCell.setValue("View Asset");
-    } else {
-      actionCell.setValue("Assign Asset");
-    }
+    // Always show the Link Asset button text. Existing links can be replaced
+    actionCell.setValue("Link Asset");
     
     // Flush changes periodically (every 10 rows) to improve performance
     if (rowNum % 10 === 0) {
@@ -936,5 +919,46 @@ function uploadAndAssociateAsset(fileObject, projectId) {
       success: false,
       error: "Failed to upload and associate asset: " + e.toString()
     };
+  }
+}
+
+/**
+ * Ensures that the Assets sheet exists with proper headers.
+ * @return {Sheet} The Assets sheet instance.
+ */
+function ensureAssetsSheetExists() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var assetsSheet = ss.getSheetByName(ASSETS_SHEET_NAME);
+  if (!assetsSheet) {
+    assetsSheet = ss.insertSheet(ASSETS_SHEET_NAME);
+    assetsSheet.appendRow(["Project ID", "File ID", "File Name", "Upload Date"]);
+  }
+  return assetsSheet;
+}
+
+/**
+ * Triggered when the user changes selection in the spreadsheet.
+ * Opens the asset dialog when selecting a cell in the asset column.
+ *
+ * @param {GoogleAppsScript.Events.SheetsOnSelectionChange} e Event object.
+ */
+function onSelectionChange(e) {
+  var sheet = e.range.getSheet();
+  if (!loadConfig()) return;
+  if (sheet.getName() !== CONTENT_SHEET_NAME) return;
+  try {
+    getHeaderIndexes(sheet);
+  } catch (err) {
+    return;
+  }
+
+  var row = e.range.getRow();
+  if (row < 3) return; // skip headers
+  if (e.range.getColumn() !== ASSET_ACTION_COL_IDX) return;
+
+  // Launch the Drive picker only when the placeholder button text is present
+  var cellValue = e.range.getValue();
+  if (cellValue === "Link Asset" && typeof openFilePicker === 'function') {
+    openFilePicker();
   }
 }
