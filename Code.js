@@ -340,10 +340,13 @@ function initializeOrRefreshAssetColumn() {
     if (assetLastRow > 1) {  // If there's data beyond the header row
       var assetData = assetsSheet.getRange(2, 1, assetLastRow - 1, 3).getValues();  // Get Project ID, File ID, File Name columns
       
-      // Populate the asset map: Project/Row ID -> File ID
+      // Populate the asset map: Project/Row ID -> {fileId, fileName}
       for (var i = 0; i < assetData.length; i++) {
         if (assetData[i][0] && assetData[i][1]) {  // If Project ID and File ID are not empty
-          assetMap.set(assetData[i][0].toString(), assetData[i][1].toString());
+          assetMap.set(assetData[i][0].toString(), {
+            fileId: assetData[i][1].toString(),
+            fileName: assetData[i][2] || "Asset"
+          });
         }
       }
     }
@@ -355,6 +358,12 @@ function initializeOrRefreshAssetColumn() {
       .setHeight(100);
   var processingDialog = SpreadsheetApp.getUi().showModalDialog(html, 'Processing');
   
+  // Create a rich text builder for multiple cells
+  var richTextBuilder = SpreadsheetApp.newRichTextValue();
+  
+  // Prepare a range of cells for batch update, starting at row 3 (after headers)
+  var assetCells = [];
+  
   // Iterate through data rows, skipping header rows 1 and 2
   for (var rowNum = 3; rowNum <= lastRow; rowNum++) {
     // Get row identifier for the current row
@@ -363,15 +372,26 @@ function initializeOrRefreshAssetColumn() {
     // Get the cell in the asset action column
     var actionCell = contentSheet.getRange(rowNum, ASSET_ACTION_COL_IDX);
     
-    // Set cell value based on whether an asset exists for this row
+    // Check if this row has an associated asset
     if (assetMap.has(rowIdentifier)) {
-      actionCell.setValue("View Asset");
+      var assetInfo = assetMap.get(rowIdentifier);
+      var fileId = assetInfo.fileId;
+      var fileName = assetInfo.fileName;
+      
+      // Create a rich text value with a "View Asset" link
+      var richTextValue = SpreadsheetApp.newRichTextValue()
+          .setText("View Asset")
+          .setLinkUrl("https://drive.google.com/file/d/" + fileId + "/view")
+          .build();
+      
+      actionCell.setRichTextValue(richTextValue);
     } else {
+      // Create a plain text "Link Asset" value (we'll handle the click via onSelectionChange)
       actionCell.setValue("Link Asset");
     }
     
-    // Flush changes periodically (every 10 rows) to improve performance
-    if (rowNum % 10 === 0) {
+    // Flush changes periodically (every 20 rows) to improve performance
+    if (rowNum % 20 === 0) {
       SpreadsheetApp.flush();
     }
   }
@@ -379,12 +399,47 @@ function initializeOrRefreshAssetColumn() {
   // Ensure all changes are applied
   SpreadsheetApp.flush();
   
-  // Close the processing dialog
-  // Note: In Apps Script, we can't directly close the modal, but we're replacing it with a completion dialog
-  var html = HtmlService.createHtmlOutput('<p>Asset column has been refreshed.</p>')
-      .setWidth(250)
-      .setHeight(100);
+  // Make sure the onSelectionChange trigger is installed
+  ensureSelectionChangeTrigger();
+  
+  // Close the processing dialog with a completion message
+  var html = HtmlService.createHtmlOutput('<p>Asset column has been refreshed.</p><p>Remember to refresh the page if this is the first setup to activate the selection trigger.</p>')
+      .setWidth(300)
+      .setHeight(120);
   var completionDialog = SpreadsheetApp.getUi().showModalDialog(html, 'Update Complete!');
+}
+
+/**
+ * Ensures the onSelectionChange trigger is installed.
+ * This is critical for making asset cells clickable.
+ */
+function ensureSelectionChangeTrigger() {
+  // Check if the trigger already exists
+  var allTriggers = ScriptApp.getProjectTriggers();
+  var triggerExists = false;
+  
+  for (var i = 0; i < allTriggers.length; i++) {
+    var trigger = allTriggers[i];
+    if (trigger.getEventType() === ScriptApp.EventType.ON_SELECTION_CHANGE && 
+        trigger.getHandlerFunction() === 'onSelectionChange') {
+      triggerExists = true;
+      break;
+    }
+  }
+  
+  // Create the trigger if it doesn't exist
+  if (!triggerExists) {
+    try {
+      ScriptApp.newTrigger('onSelectionChange')
+        .forSpreadsheet(SpreadsheetApp.getActive())
+        .onSelectionChange()
+        .create();
+      Logger.log('onSelectionChange trigger created successfully.');
+    } catch (e) {
+      Logger.log('Error creating onSelectionChange trigger: ' + e.toString());
+      // Don't alert the user, as this requires authorization that might not be present yet
+    }
+  }
 }
 
 /**
@@ -563,6 +618,9 @@ function linkAssetToRow(rowIdentifier, fileId, fileName) {
     // Update or append the row in the Assets sheet
     var updated = updateOrAppendRow_(assetsSheet, rowData, projectIdColIdx);
     
+    // Update the asset action cell in the content sheet
+    updateAssetActionCell(rowIdentifier, fileId, fileName);
+    
     // Return success with details
     return {
       success: true,
@@ -577,6 +635,67 @@ function linkAssetToRow(rowIdentifier, fileId, fileName) {
       success: false,
       error: "Failed to link asset to row: " + e.toString()
     };
+  }
+}
+
+/**
+ * Updates the asset action cell in the content sheet for a specified row.
+ * Changes the cell from "Link Asset" to "View Asset" with a link to the Google Drive file.
+ * 
+ * @param {string} rowIdentifier - The unique identifier for the row
+ * @param {string} fileId - The ID of the file to link
+ * @param {string} fileName - The name of the file for display
+ * @return {boolean} True if the cell was updated successfully
+ */
+function updateAssetActionCell(rowIdentifier, fileId, fileName) {
+  try {
+    if (!loadConfig()) return false;
+    
+    // Get the content sheet
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var contentSheet = ss.getSheetByName(CONTENT_SHEET_NAME);
+    if (!contentSheet) return false;
+    
+    try {
+      getHeaderIndexes(contentSheet);
+    } catch (e) {
+      Logger.log("Error getting header indexes: " + e.toString());
+      return false;
+    }
+    
+    // Find the row with the matching identifier
+    var rowNum = 0;
+    var lastRow = contentSheet.getLastRow();
+    
+    // If we have a row ID column, use it to find the row
+    if (ROW_ID_COL_IDX > 0) {
+      var idValues = contentSheet.getRange(3, ROW_ID_COL_IDX, lastRow - 2, 1).getValues();
+      for (var i = 0; i < idValues.length; i++) {
+        if (idValues[i][0] && idValues[i][0].toString() === rowIdentifier.toString()) {
+          rowNum = i + 3; // +3 because we start at row 3 (after headers)
+          break;
+        }
+      }
+    }
+    
+    // If we found the row, update the asset action cell
+    if (rowNum > 0) {
+      var actionCell = contentSheet.getRange(rowNum, ASSET_ACTION_COL_IDX);
+      
+      // Create a rich text value with a "View Asset" link
+      var richTextValue = SpreadsheetApp.newRichTextValue()
+          .setText("View Asset")
+          .setLinkUrl("https://drive.google.com/file/d/" + fileId + "/view")
+          .build();
+      
+      actionCell.setRichTextValue(richTextValue);
+      return true;
+    }
+    
+    return false;
+  } catch (e) {
+    Logger.log("Error updating asset action cell: " + e.toString());
+    return false;
   }
 }
 
@@ -742,6 +861,9 @@ function associateExistingAsset(projectId, fileIdToAssociate, fileNameToAssociat
     // Update or append the row in the Assets sheet
     var projectIdColIdx = 0;  // Assuming Project ID is in first column
     var updated = updateOrAppendRow_(assetsSheet, rowData, projectIdColIdx);
+    
+    // Update the asset action cell in the content sheet
+    updateAssetActionCell(projectId, fileIdToAssociate, fileNameToAssociate);
     
     // Return success with details
     return {
@@ -949,22 +1071,90 @@ function ensureAssetsSheetExists() {
  * @param {GoogleAppsScript.Events.SheetsOnSelectionChange} e Event object.
  */
 function onSelectionChange(e) {
-  var sheet = e.range.getSheet();
-  if (!loadConfig()) return;
-  if (sheet.getName() !== CONTENT_SHEET_NAME) return;
   try {
-    getHeaderIndexes(sheet);
+    var sheet = e.range.getSheet();
+    if (sheet.getName() !== CONTENT_SHEET_NAME) return;
+    
+    // Load configuration if needed
+    if (!ASSET_ACTION_COL_IDX) {
+      if (!loadConfig()) return;
+      try {
+        getHeaderIndexes(sheet);
+      } catch (err) {
+        return;
+      }
+    }
+    
+    var row = e.range.getRow();
+    if (row < 3) return; // skip headers
+    
+    var column = e.range.getColumn();
+    if (column !== ASSET_ACTION_COL_IDX) return;
+    
+    // Get the cell value
+    var cell = sheet.getRange(row, column);
+    var cellValue = cell.getValue();
+    var rowIdentifier = getRowIdentifier(sheet, row);
+    
+    if (cellValue === "Link Asset") {
+      Logger.log("Showing asset dialog for row " + row + " with ID: " + rowIdentifier);
+      showAssignAssetDialog(rowIdentifier, row);
+    } else if (cellValue === "View Asset") {
+      Logger.log("Viewing asset for row " + row + " with ID: " + rowIdentifier);
+      viewAssetForRow(rowIdentifier);
+    }
   } catch (err) {
-    return;
+    Logger.log("Error in onSelectionChange: " + err.toString());
   }
+}
 
-  var row = e.range.getRow();
-  if (row < 3) return; // skip headers
-  if (e.range.getColumn() !== ASSET_ACTION_COL_IDX) return;
-
-  var cellValue = e.range.getValue();
-  var rowIdentifier = getRowIdentifier(sheet, row);
-  if (cellValue === "Link Asset") {
-    showAssignAssetDialog(rowIdentifier, row);
+/**
+ * Views the asset associated with a specific row identifier.
+ * Opens the Google Drive file in a new browser tab.
+ * 
+ * @param {string} rowIdentifier - The unique identifier for the row
+ */
+function viewAssetForRow(rowIdentifier) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var assetsSheet = ss.getSheetByName(ASSETS_SHEET_NAME);
+    
+    if (!assetsSheet) {
+      SpreadsheetApp.getUi().alert("Assets sheet not found.");
+      return;
+    }
+    
+    // Search for the asset record
+    var assetData = assetsSheet.getDataRange().getValues();
+    var fileId = null;
+    
+    // Start from row 1 (which is the header) to get the correct index
+    for (var i = 1; i < assetData.length; i++) {
+      if (assetData[i][0] && assetData[i][0].toString() === rowIdentifier.toString()) {
+        fileId = assetData[i][1];
+        break;
+      }
+    }
+    
+    if (!fileId) {
+      SpreadsheetApp.getUi().alert("No asset found for this row. Try linking an asset first.");
+      return;
+    }
+    
+    // Create a dialog to open the file
+    var html = HtmlService.createHtmlOutput(
+      '<script>' +
+      'window.open("https://drive.google.com/file/d/' + fileId + '/view", "_blank");' +
+      'google.script.host.close();' +
+      '</script>'
+    )
+    .setWidth(1)
+    .setHeight(1);
+    
+    SpreadsheetApp.getUi().showModalDialog(html, "Opening asset...");
+    
+  } catch (e) {
+    Logger.log("Error viewing asset: " + e.toString());
+    SpreadsheetApp.getUi().alert("Error viewing asset: " + e.toString());
   }
 }
