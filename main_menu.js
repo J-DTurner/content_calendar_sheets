@@ -978,10 +978,16 @@ function setupSettings(sheet, preserveExisting = false) {
       ]
     },
      { section: 'API INSTRUCTIONS', range: 'A32:C32', isInstructions: true, text: [
-        ['API Integration Instructions:'], 
-        ['1. Enter your API keys/tokens for the services you want to integrate with in the fields above (rows 18-22).'], 
+        ['API Integration Instructions:'],
+        ['1. Enter your API keys/tokens for the services you want to integrate with in the fields above (rows 18-22).'],
         ['2. For "Google Drive Folder ID (Assets)", this is for the `api_integrations.js` GDrive sync. The "Google Drive Assets Folder ID" (row 17) is for `drive_integration_script.js` picker.'],
         ['3. Use the "Integrations" menu (if available via App Panel) or specific setup functions for detailed connections.'],
+      ]
+    },
+    { section: 'ASSET MANAGEMENT', range: 'A38:C38', items: [
+        { row: 39, label: 'Content Sheet Name:', key: 'contentSheetName', targetCell: 'B39', defaultValue: 'Content Calendar' },
+        { row: 40, label: 'Asset Action Column Name:', key: 'assetActionColumnName', targetCell: 'B40', defaultValue: 'Asset Action' },
+        { row: 41, label: 'Row ID Column Name:', key: 'rowIdColumnName', targetCell: 'B41', defaultValue: 'ID' }
       ]
     },
   ];

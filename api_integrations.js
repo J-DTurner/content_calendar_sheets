@@ -23,6 +23,11 @@ const API_INTEGRATION_CONFIG = {
   LINK_COLUMN: 7, // Column G for Link to Asset
   ANALYTICS_SHEET: 'Analytics',
   LAST_SYNC_CELL: 'B20',
+  ASSET_CONFIG: {
+    CONTENT_SHEET_CELL: 'B39',
+    ASSET_ACTION_COLUMN_CELL: 'B40',
+    ROW_ID_COLUMN_CELL: 'B41'
+  },
   MAX_RESULTS_PER_QUERY: 50
 };
 
@@ -468,7 +473,10 @@ function getIntegrationSettings() {
       telegramBotToken: safeGetCellValue(API_INTEGRATION_CONFIG.API_KEYS.TELEGRAM_BOT_TOKEN_CELL),
       driveFolderId: safeGetCellValue(API_INTEGRATION_CONFIG.DRIVE_FOLDER_ID_CELL),
       driveFolderName: safeGetCellValue(API_INTEGRATION_CONFIG.DRIVE_FOLDER_NAME_CELL),
-      lastAnalyticsSync: safeGetCellValue(API_INTEGRATION_CONFIG.LAST_SYNC_CELL)
+      lastAnalyticsSync: safeGetCellValue(API_INTEGRATION_CONFIG.LAST_SYNC_CELL),
+      contentSheetName: safeGetCellValue(API_INTEGRATION_CONFIG.ASSET_CONFIG.CONTENT_SHEET_CELL),
+      assetActionColumnName: safeGetCellValue(API_INTEGRATION_CONFIG.ASSET_CONFIG.ASSET_ACTION_COLUMN_CELL),
+      rowIdColumnName: safeGetCellValue(API_INTEGRATION_CONFIG.ASSET_CONFIG.ROW_ID_COLUMN_CELL)
     };
     
     // Sanitize and validate Drive Folder ID (prevent potential errors when using it later)
@@ -644,6 +652,40 @@ function saveGoogleDriveFolderId_(folderId) { // Renamed and parameter added
          return { success: false, message: 'Insufficient permissions to access the folder. Please ensure the script has access.' };
     }
     return { success: false, message: 'Error connecting Google Drive folder: ' + e.toString() };
+  }
+}
+
+/**
+ * Saves asset management configuration values.
+ * @param {object} cfg Object containing contentSheetName, assetActionColumnName, rowIdColumnName.
+ * @return {object} Result object with success boolean and message.
+ */
+function saveAssetConfig(cfg) {
+  return saveAssetConfig_(cfg);
+}
+
+function saveAssetConfig_(cfg) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(API_INTEGRATION_CONFIG.SETTINGS_SHEET);
+    if (!sheet) {
+      const setupResult = setupApiIntegration({ showConfirmationDialog: false });
+      sheet = ss.getSheetByName(API_INTEGRATION_CONFIG.SETTINGS_SHEET);
+      if (!sheet) {
+        return { success: false, message: 'Settings sheet not found and could not be created.' };
+      }
+    }
+    if (typeof setupSettings === 'function') {
+      try { setupSettings(sheet, true); } catch(e){}
+    }
+    if (cfg.contentSheetName !== undefined) sheet.getRange(API_INTEGRATION_CONFIG.ASSET_CONFIG.CONTENT_SHEET_CELL).setValue(cfg.contentSheetName);
+    if (cfg.assetActionColumnName !== undefined) sheet.getRange(API_INTEGRATION_CONFIG.ASSET_CONFIG.ASSET_ACTION_COLUMN_CELL).setValue(cfg.assetActionColumnName);
+    if (cfg.rowIdColumnName !== undefined) sheet.getRange(API_INTEGRATION_CONFIG.ASSET_CONFIG.ROW_ID_COLUMN_CELL).setValue(cfg.rowIdColumnName);
+    SpreadsheetApp.flush();
+    return { success: true, message: 'Asset settings saved.' };
+  } catch(e) {
+    Logger.log('Error in saveAssetConfig_: ' + e.toString());
+    return { success: false, message: 'Error saving asset settings: ' + e.toString() };
   }
 }
 
