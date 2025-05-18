@@ -66,6 +66,12 @@
       </div>
 
       <div class="section">
+        <div class="section-title">Asset Management</div>
+        <button class="button-block" onclick="runInitializeAssetColumn()">🔄 Initialize/Refresh Asset Column</button>
+        <button class="button-block" onclick="runManageSelectedAsset()">🖼️ Manage Selected Asset</button>
+      </div>
+
+      <div class="section">
         <div class="section-title">Integrations & Advanced</div>
         <button class="button-block" onclick="runOpenMenu('Integrations')">🔗 Integrations Menu</button>
         <button class="button-block" onclick="runOpenMenu('Templates')">📋 Templates Menu</button>
@@ -155,6 +161,20 @@
       
       function runShowHelp() {
         google.script.run.showHelpDocumentation();
+      }
+
+      function runInitializeAssetColumn() {
+        google.script.run
+          .withSuccessHandler(function() { showStatus('Asset column initialized/refreshed.', true); })
+          .withFailureHandler(function(err) { showStatus('Error initializing asset column: ' + (err.message || err), false); })
+          .initializeOrRefreshAssetColumn();
+      }
+
+      function runManageSelectedAsset() {
+        google.script.run
+          .withSuccessHandler(function() { /* Modal opened by server */ })
+          .withFailureHandler(function(err) { showStatus('Error managing asset: ' + (err.message || err), false); })
+          .performActionOnSelectedAssetCell();
       }
 
       function runOpenMenu(menuName) {

@@ -86,6 +86,23 @@ function handleOpenUpdates(e, ss, ui) {
             ss.toast("Some configured services inaccessible. See App Panel.", "Access Check Warning", 7);
           }
         }
+
+        // Initialize Asset Management functionality if available
+        try {
+          if (typeof initializeAssetManagement === 'function') {
+            Logger.log("Initializing Asset Management functionality");
+            initializeAssetManagement();
+            
+            // Automatically initialize/refresh the asset column
+            if (typeof initializeOrRefreshAssetColumn === 'function') {
+              Logger.log("Initializing/refreshing asset column");
+              initializeOrRefreshAssetColumn();
+            }
+          }
+        } catch (assetError) {
+          Logger.log("Error initializing Asset Management: " + assetError.toString());
+          ss.toast("Asset Management could not be fully initialized", "Warning", 5);
+        }
       }
       
       return true;

@@ -19,11 +19,17 @@ function onOpen(e) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
     // Always create a basic menu
-    ui.createMenu('📊 Content Calendar')
+    const menu = ui.createMenu('📊 Content Calendar')
       .addItem('🚀 Show App Panel', 'showAppPanel')
       .addSeparator()
-      .addItem('⚙️ Initial Setup / Re-authorize', 'userInitiatedFullSetup') // Renamed for clarity
-      .addToUi();
+      .addSubMenu(ui.createMenu('🖼️ Asset Management')
+        .addItem('Initialize/Refresh Asset Column', 'initializeOrRefreshAssetColumn')
+        .addItem('Manage Selected Asset Cell', 'performActionOnSelectedAssetCell')
+        .addItem('Show Asset Configuration', 'loadConfigAndDisplay'))
+      .addSeparator()
+      .addItem('⚙️ Initial Setup / Re-authorize', 'userInitiatedFullSetup');
+    
+    menu.addToUi();
     Logger.log("Basic menu created.");
 
     const userProperties = PropertiesService.getUserProperties();

@@ -38,6 +38,17 @@ function onOpen() {
 }
 
 /**
+ * Initializes asset management functionality.
+ * This should be called from the main onOpen handler.
+ * 
+ * @return {boolean} True if initialization succeeded.
+ */
+function initializeAssetManagement() {
+  // Load configuration
+  return loadConfig();
+}
+
+/**
  * Loads configuration settings from the Settings sheet.
  * @return {boolean} True if configuration loaded successfully, false otherwise.
  */
@@ -217,8 +228,8 @@ function getHeaderIndexes(sheet) {
     throw new Error('Sheet is null or undefined');
   }
   
-  // Read the first row (header row)
-  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  // Read the second row (column headers)
+  var headers = sheet.getRange(2, 1, 1, sheet.getLastColumn()).getValues()[0];
   
   // Find the asset action column index
   ASSET_ACTION_COL_IDX = headers.indexOf(ASSET_ACTION_COLUMN_NAME) + 1;
@@ -315,8 +326,8 @@ function initializeOrRefreshAssetColumn() {
   
   // Check if there is data in the content sheet
   var lastRow = contentSheet.getLastRow();
-  if (lastRow < 2) {
-    SpreadsheetApp.getUi().alert('No data found in content sheet.');
+  if (lastRow < 3) {
+    SpreadsheetApp.getUi().alert('No data rows found in content sheet.');
     return;
   }
   
@@ -344,8 +355,8 @@ function initializeOrRefreshAssetColumn() {
       .setHeight(100);
   var processingDialog = SpreadsheetApp.getUi().showModalDialog(html, 'Processing');
   
-  // Iterate through all content rows
-  for (var rowNum = 2; rowNum <= lastRow; rowNum++) {
+  // Iterate through data rows, skipping header rows 1 and 2
+  for (var rowNum = 3; rowNum <= lastRow; rowNum++) {
     // Get row identifier for the current row
     var rowIdentifier = getRowIdentifier(contentSheet, rowNum);
     
