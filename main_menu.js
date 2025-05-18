@@ -531,6 +531,9 @@ function initializeContentCalendar(options = {}) {
 
     Logger.log('Initializing main sheets...');
     initializeMainSheets(ss, config.forceContentCalendar, config.forceSettings, config.forceLists);
+    if (typeof ensureAssetsSheetExists === 'function') {
+      ensureAssetsSheetExists();
+    }
     currentStep++;
     ss.toast('Main sheets configured.', `Setup Progress (${Math.round((currentStep/totalSteps)*100)}%)`, 5);
 
@@ -678,6 +681,11 @@ function initializeMainSheets(ss, forceContentCalendar = false, forceSettings = 
 
   Logger.log('Applying data validation to Content Calendar sheet.');
   setupDataValidation(calendarSheet); // Must run after Lists sheet is ready
+
+  // Ensure the Assets sheet exists for tracking linked files
+  if (typeof ensureAssetsSheetExists === 'function') {
+    ensureAssetsSheetExists();
+  }
 }
 
 /**
