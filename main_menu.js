@@ -1030,7 +1030,17 @@ function setupSettings(sheet, preserveExisting = false) {
          Logger.log(`Wrote instructions for ${group.section}`);
     } else if (group.items) {
         group.items.forEach(item => {
-          const labelCell = sheet.getRange(item.row, 1); 
+          // Ensure the entire row for this item is not merged with other rows or columns
+          try {
+            const rowRange = sheet.getRange(item.row, 1, 1, 3); // columns A-C for the row
+            if (rowRange.isPartOfMerge()) {
+              rowRange.breakApart();
+            }
+          } catch(e) {
+            Logger.log(`Could not break apart merged cells for row ${item.row}: ${e}`);
+          }
+
+          const labelCell = sheet.getRange(item.row, 1);
           const valueCell = sheet.getRange(item.targetCell); // Must use targetCell
 
           if (labelCell.getValue() !== item.label) {
